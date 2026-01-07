@@ -74,7 +74,7 @@ export function RegistrationModal({ session, isOpen, onClose, onSuccess }: Regis
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="w-[calc(100%-2rem)] max-w-md mx-4 sm:mx-auto">
         {generatedCode ? (
           <>
             <DialogHeader>

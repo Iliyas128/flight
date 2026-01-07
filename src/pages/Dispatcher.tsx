@@ -30,8 +30,8 @@ const Dispatcher = () => {
     <div className="min-h-screen bg-background flex">
       <DispatcherSidebar />
       
-      <main className="flex-1 lg:ml-0">
-        <div className="page-container pt-16 lg:pt-6">
+      <main className="flex-1 lg:ml-0 w-full overflow-x-hidden">
+        <div className="page-container pt-14 sm:pt-16 lg:pt-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <div>
               <h1 className="page-title">Управление сессиями</h1>

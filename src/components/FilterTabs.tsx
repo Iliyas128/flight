@@ -19,14 +19,14 @@ export function FilterTabs({ activeFilter, onChange, counts }: FilterTabsProps) 
         <button
           key={tab.value}
           onClick={() => onChange(tab.value)}
-          className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+          className={`px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-colors ${
             activeFilter === tab.value
               ? 'bg-primary text-primary-foreground'
               : 'bg-secondary text-secondary-foreground hover:bg-accent'
           }`}
         >
           {tab.label}
-          <span className="ml-1.5 text-xs opacity-75">({counts[tab.value]})</span>
+          <span className="ml-1 sm:ml-1.5 text-xs opacity-75">({counts[tab.value]})</span>
         </button>
       ))}
     </div>

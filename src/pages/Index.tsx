@@ -44,8 +44,8 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-border bg-card">
-        <div className="page-container py-4 flex items-center justify-between">
+      <header className="border-b border-border bg-card sticky top-0 z-20">
+        <div className="page-container py-3 sm:py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Plane className="h-5 w-5 text-primary" />
             <span className="font-semibold text-foreground">Запись на сессии</span>

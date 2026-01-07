@@ -86,7 +86,7 @@ export function CreateSessionForm({ onSuccess }: CreateSessionFormProps) {
           Создать сессию
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="w-[calc(100%-2rem)] max-w-md mx-4 sm:mx-auto">
         <DialogHeader>
           <DialogTitle>Новая сессия</DialogTitle>
         </DialogHeader>

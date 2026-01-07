@@ -40,8 +40,8 @@ export function SessionsTable({ sessions, participants, onDelete, readOnly = fal
   }
 
   return (
-    <div className="card-base overflow-hidden">
-      <div className="overflow-x-auto">
+    <div className="card-base overflow-hidden w-full">
+      <div className="overflow-x-auto -mx-1 sm:mx-0">
         <table className="w-full">
           <thead>
             <tr className="border-b border-border">
@@ -139,7 +139,7 @@ export function SessionsTable({ sessions, participants, onDelete, readOnly = fal
 
       {/* Delete confirmation dialog */}
       <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-md mx-4 sm:mx-auto">
           <DialogHeader>
             <DialogTitle>Удалить сессию?</DialogTitle>
             <DialogDescription>
