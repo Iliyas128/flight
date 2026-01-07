@@ -129,3 +129,24 @@ export function getTimeUntilSession(date: string, time: string): string {
   if (hours > 0) return `${hours}ч ${minutes}м`;
   return `${minutes}м`;
 }
+
+export function getTimeUntilClosing(session: Session): string | null {
+  if (session.status === 'closed' || session.status === 'completed') {
+    return null;
+  }
+  
+  const now = new Date();
+  const sessionDateTime = new Date(`${session.date}T${session.time}`);
+  const closingTime = new Date(sessionDateTime.getTime() - session.closingMinutes * 60 * 1000);
+  const diff = closingTime.getTime() - now.getTime();
+  
+  if (diff <= 0) return null;
+  
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  
+  if (days > 0) return `${days}д ${hours}ч`;
+  if (hours > 0) return `${hours}ч ${minutes}м`;
+  return `${minutes}м`;
+}

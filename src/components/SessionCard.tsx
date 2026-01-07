@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Session } from '@/types';
 import { StatusBadge } from './StatusBadge';
 import { RegistrationModal } from './RegistrationModal';
-import { formatDateTime, getTimeUntilSession } from '@/lib/storage';
-import { Clock, Users, Calendar } from 'lucide-react';
+import { formatDateTime, getTimeUntilSession, getTimeUntilClosing } from '@/lib/storage';
+import { Clock, Users, Calendar, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface SessionCardProps {
@@ -15,6 +15,7 @@ interface SessionCardProps {
 export function SessionCard({ session, participantCount, onRegistrationComplete }: SessionCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const canRegister = session.status === 'open' || session.status === 'closing';
+  const timeUntilClosing = getTimeUntilClosing(session);
 
   return (
     <>
@@ -41,6 +42,12 @@ export function SessionCard({ session, participantCount, onRegistrationComplete 
                 <Users className="h-4 w-4" />
                 {participantCount} участник(ов)
               </span>
+              {timeUntilClosing && (
+                <span className="flex items-center gap-1.5 text-status-closing-text">
+                  <AlertCircle className="h-4 w-4" />
+                  Запись закроется через {timeUntilClosing}
+                </span>
+              )}
             </div>
           </div>
           
