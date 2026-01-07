@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Session, Participant } from '@/types';
 import { getCompletedSessions, getParticipants } from '@/lib/storage';
-import { DispatcherSidebar } from '@/components/DispatcherSidebar';
+import { DispatcherHeader } from '@/components/DispatcherHeader';
 import { SessionsTable } from '@/components/SessionsTable';
 import { Archive as ArchiveIcon } from 'lucide-react';
 
@@ -25,11 +25,11 @@ const Archive = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <DispatcherSidebar />
+    <div className="min-h-screen bg-background">
+      <DispatcherHeader />
       
-      <main className="flex-1 lg:ml-0">
-        <div className="page-container pt-16 lg:pt-6">
+      <main className="w-full overflow-x-hidden">
+        <div className="page-container py-6">
           <div className="mb-6">
             <h1 className="page-title flex items-center gap-2">
               <ArchiveIcon className="h-5 w-5" />

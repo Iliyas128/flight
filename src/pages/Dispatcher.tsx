@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Session, Participant } from '@/types';
 import { getUpcomingSessions, getParticipants } from '@/lib/storage';
-import { DispatcherSidebar } from '@/components/DispatcherSidebar';
+import { DispatcherHeader } from '@/components/DispatcherHeader';
 import { CreateSessionForm } from '@/components/CreateSessionForm';
 import { SessionsTable } from '@/components/SessionsTable';
 
@@ -27,11 +27,11 @@ const Dispatcher = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <DispatcherSidebar />
+    <div className="min-h-screen bg-background">
+      <DispatcherHeader />
       
-      <main className="flex-1 lg:ml-0 w-full overflow-x-hidden">
-        <div className="page-container pt-14 sm:pt-16 lg:pt-6">
+      <main className="w-full overflow-x-hidden">
+        <div className="page-container py-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <div>
               <h1 className="page-title">Управление сессиями</h1>
