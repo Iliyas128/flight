@@ -1,12 +1,103 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { Session, FilterType } from '@/types';
+import { getUpcomingSessions, getSessionParticipants } from '@/lib/storage';
+import { SessionCard } from '@/components/SessionCard';
+import { FilterTabs } from '@/components/FilterTabs';
+import { Plane, Settings } from 'lucide-react';
 
 const Index = () => {
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [filter, setFilter] = useState<FilterType>('all');
+
+  const loadSessions = () => {
+    const upcoming = getUpcomingSessions();
+    upcoming.sort((a, b) => {
+      const dateA = new Date(`${a.date}T${a.time}`);
+      const dateB = new Date(`${b.date}T${b.time}`);
+      return dateA.getTime() - dateB.getTime();
+    });
+    setSessions(upcoming);
+  };
+
+  useEffect(() => {
+    loadSessions();
+    // Refresh every minute to update statuses
+    const interval = setInterval(loadSessions, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const filteredSessions = sessions.filter(session => {
+    if (filter === 'all') return true;
+    if (filter === 'open') return session.status === 'open';
+    if (filter === 'closing') return session.status === 'closing';
+    return true;
+  });
+
+  const counts = {
+    all: sessions.length,
+    open: sessions.filter(s => s.status === 'open').length,
+    closing: sessions.filter(s => s.status === 'closing').length
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="border-b border-border bg-card">
+        <div className="page-container py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Plane className="h-5 w-5 text-primary" />
+            <span className="font-semibold text-foreground">Запись на сессии</span>
+          </div>
+          <Link 
+            to="/dispatcher"
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Settings className="h-4 w-4" />
+            <span className="hidden sm:inline">Диспетчер</span>
+          </Link>
+        </div>
+      </header>
+
+      {/* Main content */}
+      <main className="page-container">
+        <div className="mb-6">
+          <h1 className="page-title mb-1">Предстоящие сессии</h1>
+          <p className="text-sm text-muted-foreground">
+            Выберите сессию для записи
+          </p>
+        </div>
+
+        <div className="mb-4">
+          <FilterTabs 
+            activeFilter={filter} 
+            onChange={setFilter}
+            counts={counts}
+          />
+        </div>
+
+        {filteredSessions.length > 0 ? (
+          <div className="space-y-3">
+            {filteredSessions.map(session => (
+              <SessionCard
+                key={session.id}
+                session={session}
+                participantCount={getSessionParticipants(session.id).length}
+                onRegistrationComplete={loadSessions}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="card-base p-8 text-center">
+            <p className="text-muted-foreground">
+              {filter === 'all' 
+                ? 'Нет предстоящих сессий'
+                : `Нет сессий со статусом "${filter === 'open' ? 'Открыта' : 'Скоро закрывается'}"`
+              }
+            </p>
+          </div>
+        )}
+      </main>
     </div>
   );
 };
