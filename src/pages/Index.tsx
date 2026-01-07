@@ -29,14 +29,15 @@ const Index = () => {
 
   const filteredSessions = sessions.filter(session => {
     if (filter === 'all') return true;
-    if (filter === 'open') return session.status === 'open';
+    // "Открытые" включает и open, и closing (они все еще открыты для записи)
+    if (filter === 'open') return session.status === 'open' || session.status === 'closing';
     if (filter === 'closing') return session.status === 'closing';
     return true;
   });
 
   const counts = {
     all: sessions.length,
-    open: sessions.filter(s => s.status === 'open').length,
+    open: sessions.filter(s => s.status === 'open' || s.status === 'closing').length,
     closing: sessions.filter(s => s.status === 'closing').length
   };
 

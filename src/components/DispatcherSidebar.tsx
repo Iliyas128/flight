@@ -34,9 +34,9 @@ export function DispatcherSidebar() {
 
       {/* Sidebar */}
       <aside className={`
-        fixed top-0 left-0 h-full w-56 bg-sidebar z-40
+        fixed top-0 left-0 min-h-screen h-full w-56 bg-sidebar z-40
         transform transition-transform duration-200 ease-in-out
-        lg:translate-x-0 lg:static
+        lg:translate-x-0 lg:relative lg:h-auto lg:min-h-screen
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="flex flex-col h-full">
