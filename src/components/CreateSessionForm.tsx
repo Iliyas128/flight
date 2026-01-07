@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { addSession, generateId, calculateSessionStatus } from '@/lib/storage';
+import { addSession, generateId, calculateSessionStatus, generateUniqueSessionCode } from '@/lib/storage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus } from 'lucide-react';
 
@@ -12,68 +13,79 @@ interface CreateSessionFormProps {
 
 export function CreateSessionForm({ onSuccess }: CreateSessionFormProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [name, setName] = useState('');
   const [date, setDate] = useState('');
-  const [time, setTime] = useState('');
-  const [closingMinutes, setClosingMinutes] = useState('60');
+  const [registrationStartTime, setRegistrationStartTime] = useState('');
+  const [startTime, setStartTime] = useState('');
+  const [comments, setComments] = useState('');
   const [error, setError] = useState('');
+  
+  // Standard closing minutes - will be configured elsewhere later
+  const STANDARD_CLOSING_MINUTES = 60;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (!name.trim() || !date || !time) {
+    if (!date || !registrationStartTime || !startTime) {
       setError('Заполните все обязательные поля');
       return;
     }
 
-    const sessionDateTime = new Date(`${date}T${time}`);
-    if (sessionDateTime <= new Date()) {
-      setError('Дата и время должны быть в будущем');
+    const registrationStartDateTime = new Date(`${date}T${registrationStartTime}`);
+    const sessionStartDateTime = new Date(`${date}T${startTime}`);
+    
+    if (registrationStartDateTime <= new Date()) {
+      setError('Дата и время начала регистрации должны быть в будущем');
       return;
     }
 
-    const minutes = parseInt(closingMinutes) || 60;
-    if (minutes < 0) {
-      setError('Время закрытия не может быть отрицательным');
+    if (sessionStartDateTime <= registrationStartDateTime) {
+      setError('Время начала полета должно быть позже времени начала регистрации');
       return;
     }
+
+    // Generate unique session code automatically
+    const sessionCode = generateUniqueSessionCode();
 
     const tempSession = {
       id: '',
-      name: '',
+      sessionCode: '',
       date,
-      time,
-      closingMinutes: minutes,
+      registrationStartTime,
+      startTime,
+      closingMinutes: STANDARD_CLOSING_MINUTES,
+      comments: '',
       status: 'open' as const,
       createdAt: ''
     };
     
     const newSession = {
       id: generateId(),
-      name: name.trim(),
+      sessionCode,
       date,
-      time,
-      closingMinutes: minutes,
+      registrationStartTime,
+      startTime,
+      closingMinutes: STANDARD_CLOSING_MINUTES,
+      comments: comments.trim(),
       status: calculateSessionStatus(tempSession),
       createdAt: new Date().toISOString()
     };
 
     addSession(newSession);
 
-    setName('');
     setDate('');
-    setTime('');
-    setClosingMinutes('60');
+    setRegistrationStartTime('');
+    setStartTime('');
+    setComments('');
     setIsOpen(false);
     onSuccess();
   };
 
   const handleClose = () => {
-    setName('');
     setDate('');
-    setTime('');
-    setClosingMinutes('60');
+    setRegistrationStartTime('');
+    setStartTime('');
+    setComments('');
     setError('');
     setIsOpen(false);
   };
@@ -92,51 +104,54 @@ export function CreateSessionForm({ onSuccess }: CreateSessionFormProps) {
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="session-name">Название сессии *</Label>
+            <Label htmlFor="session-date">Дата *</Label>
             <Input
-              id="session-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Например: Утренний брифинг"
+              id="session-date"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
               className="input-base"
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="session-date">Дата *</Label>
-              <Input
-                id="session-date"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="input-base"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="session-time">Время *</Label>
-              <Input
-                id="session-time"
-                type="time"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                className="input-base"
-              />
-            </div>
-          </div>
           <div className="space-y-2">
-            <Label htmlFor="closing-minutes">Закрытие записи за (мин)</Label>
+            <Label htmlFor="registration-start-time">Время начала регистрации *</Label>
             <Input
-              id="closing-minutes"
-              type="number"
-              min="0"
-              value={closingMinutes}
-              onChange={(e) => setClosingMinutes(e.target.value)}
-              placeholder="60"
+              id="registration-start-time"
+              type="time"
+              value={registrationStartTime}
+              onChange={(e) => setRegistrationStartTime(e.target.value)}
               className="input-base"
             />
             <p className="text-xs text-muted-foreground">
-              Запись закроется за указанное количество минут до начала
+              Время, когда пилоты могут начать регистрироваться
             </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="start-time">Время начала полета *</Label>
+            <Input
+              id="start-time"
+              type="time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+              className="input-base"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Регистрация закроется автоматически за 60 минут до начала полета
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Код сессии будет сгенерирован автоматически
+          </p>
+          <div className="space-y-2">
+            <Label htmlFor="comments">Комментарии</Label>
+            <Textarea
+              id="comments"
+              value={comments}
+              onChange={(e) => setComments(e.target.value)}
+              placeholder="Введите комментарии к сессии..."
+              className="min-h-[80px] max-h-[200px] resize-y"
+              rows={4}
+            />
           </div>
           {error && (
             <p className="text-sm text-destructive">{error}</p>

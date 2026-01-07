@@ -13,8 +13,8 @@ const Index = () => {
   const loadSessions = () => {
     const upcoming = getUpcomingSessions();
     upcoming.sort((a, b) => {
-      const dateA = new Date(`${a.date}T${a.time}`);
-      const dateB = new Date(`${b.date}T${b.time}`);
+      const dateA = new Date(`${a.date}T${a.startTime || a.time || '00:00'}`);
+      const dateB = new Date(`${b.date}T${b.startTime || b.time || '00:00'}`);
       return dateA.getTime() - dateB.getTime();
     });
     setSessions(upcoming);
