@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 import { Session, Participant } from '@/types';
 import { StatusBadge } from './StatusBadge';
 import { formatDateTime, deleteSession } from '@/lib/storage';
@@ -59,8 +59,8 @@ export function SessionsTable({ sessions, participants, onDelete, readOnly = fal
               const sessionParticipants = getSessionParticipants(session.id);
               
               return (
-                <>
-                  <tr key={session.id} className="even:bg-slate-50 hover:bg-slate-50/80">
+                <Fragment key={session.id}>
+                  <tr className="even:bg-slate-50 hover:bg-slate-50/80">
                     <td className="table-cell font-medium">
                       <div>
                         {session.name}
@@ -130,7 +130,7 @@ export function SessionsTable({ sessions, participants, onDelete, readOnly = fal
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               );
             })}
           </tbody>

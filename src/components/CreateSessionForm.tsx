@@ -39,13 +39,23 @@ export function CreateSessionForm({ onSuccess }: CreateSessionFormProps) {
       return;
     }
 
+    const tempSession = {
+      id: '',
+      name: '',
+      date,
+      time,
+      closingMinutes: minutes,
+      status: 'open' as const,
+      createdAt: ''
+    };
+    
     const newSession = {
       id: generateId(),
       name: name.trim(),
       date,
       time,
       closingMinutes: minutes,
-      status: calculateSessionStatus({ date, time, closingMinutes: minutes } as any),
+      status: calculateSessionStatus(tempSession),
       createdAt: new Date().toISOString()
     };
 

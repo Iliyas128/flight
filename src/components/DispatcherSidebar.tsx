@@ -14,15 +14,17 @@ export function DispatcherSidebar() {
 
   return (
     <>
-      {/* Mobile toggle */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="fixed top-4 left-4 z-50 lg:hidden bg-sidebar text-sidebar-foreground hover:bg-sidebar-accent"
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-      </Button>
+      {/* Mobile toggle - only show when sidebar is closed */}
+      {!isOpen && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="fixed top-4 left-4 z-30 lg:hidden bg-sidebar text-sidebar-foreground hover:bg-sidebar-accent"
+          onClick={() => setIsOpen(true)}
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+      )}
 
       {/* Overlay for mobile */}
       {isOpen && (
@@ -34,18 +36,28 @@ export function DispatcherSidebar() {
 
       {/* Sidebar */}
       <aside className={`
-        fixed top-0 left-0 min-h-screen h-full w-56 bg-sidebar z-40
+        fixed top-0 left-0 min-h-screen h-full w-56 bg-sidebar z-50
         transform transition-transform duration-200 ease-in-out
-        lg:translate-x-0 lg:relative lg:h-auto lg:min-h-screen
+        lg:translate-x-0 lg:relative lg:h-auto lg:min-h-screen lg:z-auto
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className="flex items-center gap-2 px-4 h-14 border-b border-sidebar-border">
-            <Plane className="h-5 w-5 text-sidebar-primary" />
-            <span className="font-semibold text-sidebar-foreground">
-              Диспетчер
-            </span>
+          {/* Logo with close button on mobile */}
+          <div className="flex items-center justify-between px-4 h-14 border-b border-sidebar-border">
+            <div className="flex items-center gap-2">
+              <Plane className="h-5 w-5 text-sidebar-primary" />
+              <span className="font-semibold text-sidebar-foreground">
+                Диспетчер
+              </span>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden text-sidebar-foreground hover:bg-sidebar-accent"
+              onClick={() => setIsOpen(false)}
+            >
+              <X className="h-5 w-5" />
+            </Button>
           </div>
 
           {/* Navigation */}
