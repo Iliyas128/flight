@@ -17,7 +17,7 @@ interface SessionsTableProps {
 }
 
 export function SessionsTable({ sessions, participants, onDelete, onUpdate, readOnly = false }: SessionsTableProps) {
-  const [expandedSession, setExpandedSession] = useState<string | null>(null);
+  const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set());
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [editingComments, setEditingComments] = useState<string | null>(null);
   const [commentsValue, setCommentsValue] = useState('');
@@ -93,7 +93,7 @@ export function SessionsTable({ sessions, participants, onDelete, onUpdate, read
             <tbody className="divide-y divide-border">
               {sessions.map((session) => {
                 const count = getParticipantCount(session.id);
-                const isExpanded = expandedSession === session.id;
+                const isExpanded = expandedSessions.has(session.id);
                 const sessionParticipants = getSessionParticipants(session.id);
                 
                 return (
@@ -126,8 +126,16 @@ export function SessionsTable({ sessions, participants, onDelete, onUpdate, read
                           size="sm"
                           className="gap-1"
                           onClick={() => {
-                            // Toggle this session (don't close others)
-                            setExpandedSession(isExpanded ? null : session.id);
+                            // Toggle this session (allow multiple expanded)
+                            setExpandedSessions(prev => {
+                              const newSet = new Set(prev);
+                              if (isExpanded) {
+                                newSet.delete(session.id);
+                              } else {
+                                newSet.add(session.id);
+                              }
+                              return newSet;
+                            });
                           }}
                           disabled={count === 0}
                         >

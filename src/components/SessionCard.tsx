@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Session } from '@/types';
 import { StatusBadge } from './StatusBadge';
 import { RegistrationModal } from './RegistrationModal';
-import { formatDateTime } from '@/lib/storage';
+import { formatDateTime, getTimeUntilSession, calculateSessionStatus } from '@/lib/storage';
 import { Users, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -14,7 +14,29 @@ interface SessionCardProps {
 
 export function SessionCard({ session, participantCount, onRegistrationComplete }: SessionCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const canRegister = session.status === 'open' || session.status === 'closing';
+  const [currentStatus, setCurrentStatus] = useState(session.status);
+  
+  // Auto-update status every 10 seconds to enable registration button when time comes
+  useEffect(() => {
+    const updateStatus = () => {
+      const newStatus = calculateSessionStatus(session);
+      setCurrentStatus(newStatus);
+    };
+    
+    updateStatus();
+    const interval = setInterval(updateStatus, 10000); // Check every 10 seconds
+    return () => clearInterval(interval);
+  }, [session]);
+  
+  const canRegister = currentStatus === 'open' || currentStatus === 'closing';
+  const registrationStartDateTime = new Date(`${session.date}T${session.registrationStartTime}`);
+  const sessionStartDateTime = new Date(`${session.date}T${session.startTime}`);
+  const registrationCloseDateTime = new Date(sessionStartDateTime.getTime() - session.closingMinutes * 60 * 1000);
+  const formatTime = (date: Date) =>
+    date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  const registrationOpensIn = currentStatus === 'upcoming'
+    ? getTimeUntilSession(session.date, session.registrationStartTime)
+    : '';
 
   return (
     <>
@@ -25,7 +47,7 @@ export function SessionCard({ session, participantCount, onRegistrationComplete 
               <span className="font-mono text-2xl font-bold text-primary">
                 {session.sessionCode || 'N/A'}
               </span>
-              <StatusBadge status={session.status} />
+              <StatusBadge status={currentStatus} />
             </div>
             
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
@@ -38,6 +60,20 @@ export function SessionCard({ session, participantCount, onRegistrationComplete 
                 {participantCount} участник(ов)
               </span>
             </div>
+            <div className="mt-2 text-xs sm:text-sm text-muted-foreground space-y-1">
+              {currentStatus === 'upcoming' ? (
+                <div>
+                  Регистрация откроется в {registrationStartDateTime.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                  {registrationOpensIn && registrationOpensIn !== 'Началась' ? ` (через ${registrationOpensIn})` : ''}
+                </div>
+              ) : currentStatus === 'closed' || currentStatus === 'completed' ? (
+                <div>Регистрация закрыта</div>
+              ) : (
+                <div>
+                  Регистрация открыта с {registrationStartDateTime.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}, закроется в {formatTime(registrationCloseDateTime)}
+                </div>
+              )}
+            </div>
           </div>
           
           <div className="sm:ml-4">
@@ -47,6 +83,10 @@ export function SessionCard({ session, participantCount, onRegistrationComplete 
                 className="w-full sm:w-auto"
               >
                 Записаться
+              </Button>
+            ) : currentStatus === 'upcoming' ? (
+              <Button variant="secondary" disabled className="w-full sm:w-auto">
+                Скоро откроется
               </Button>
             ) : (
               <Button variant="secondary" disabled className="w-full sm:w-auto">

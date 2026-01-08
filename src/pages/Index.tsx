@@ -32,13 +32,15 @@ const Index = () => {
     // "Открытые" включает и open, и closing (они все еще открыты для записи)
     if (filter === 'open') return session.status === 'open' || session.status === 'closing';
     if (filter === 'closing') return session.status === 'closing';
+    if (filter === 'upcoming') return session.status === 'upcoming';
     return true;
   });
 
   const counts = {
     all: sessions.length,
     open: sessions.filter(s => s.status === 'open' || s.status === 'closing').length,
-    closing: sessions.filter(s => s.status === 'closing').length
+    closing: sessions.filter(s => s.status === 'closing').length,
+    upcoming: sessions.filter(s => s.status === 'upcoming').length
   };
 
   return (
@@ -91,10 +93,10 @@ const Index = () => {
         ) : (
           <div className="card-base p-8 text-center">
             <p className="text-muted-foreground">
-              {filter === 'all' 
-                ? 'Нет предстоящих сессий'
-                : `Нет сессий со статусом "${filter === 'open' ? 'Открыта' : 'Скоро закрывается'}"`
-              }
+              {filter === 'all' && 'Нет предстоящих сессий'}
+              {filter === 'open' && 'Нет сессий со статусом "Открыта"'}
+              {filter === 'closing' && 'Нет сессий со статусом "Скоро закрывается"'}
+              {filter === 'upcoming' && 'Нет сессий, которые скоро откроются'}
             </p>
           </div>
         )}

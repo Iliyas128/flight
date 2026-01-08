@@ -16,6 +16,7 @@ export function CreateSessionForm({ onSuccess }: CreateSessionFormProps) {
   const [date, setDate] = useState('');
   const [registrationStartTime, setRegistrationStartTime] = useState('');
   const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
   const [comments, setComments] = useState('');
   const [error, setError] = useState('');
   
@@ -26,13 +27,14 @@ export function CreateSessionForm({ onSuccess }: CreateSessionFormProps) {
     e.preventDefault();
     setError('');
 
-    if (!date || !registrationStartTime || !startTime) {
+    if (!date || !registrationStartTime || !startTime || !endTime) {
       setError('Заполните все обязательные поля');
       return;
     }
 
     const registrationStartDateTime = new Date(`${date}T${registrationStartTime}`);
     const sessionStartDateTime = new Date(`${date}T${startTime}`);
+    const sessionEndDateTime = new Date(`${date}T${endTime}`);
     
     if (registrationStartDateTime <= new Date()) {
       setError('Дата и время начала регистрации должны быть в будущем');
@@ -40,7 +42,12 @@ export function CreateSessionForm({ onSuccess }: CreateSessionFormProps) {
     }
 
     if (sessionStartDateTime <= registrationStartDateTime) {
-      setError('Время начала полета должно быть позже времени начала регистрации');
+      setError('Время начала сессии должно быть позже времени начала регистрации');
+      return;
+    }
+
+    if (sessionEndDateTime <= sessionStartDateTime) {
+      setError('Время окончания сессии должно быть позже начала');
       return;
     }
 
@@ -53,6 +60,7 @@ export function CreateSessionForm({ onSuccess }: CreateSessionFormProps) {
       date,
       registrationStartTime,
       startTime,
+      endTime,
       closingMinutes: STANDARD_CLOSING_MINUTES,
       comments: '',
       status: 'open' as const,
@@ -65,6 +73,7 @@ export function CreateSessionForm({ onSuccess }: CreateSessionFormProps) {
       date,
       registrationStartTime,
       startTime,
+      endTime,
       closingMinutes: STANDARD_CLOSING_MINUTES,
       comments: comments.trim(),
       status: calculateSessionStatus(tempSession),
@@ -76,6 +85,7 @@ export function CreateSessionForm({ onSuccess }: CreateSessionFormProps) {
     setDate('');
     setRegistrationStartTime('');
     setStartTime('');
+    setEndTime('');
     setComments('');
     setIsOpen(false);
     onSuccess();
@@ -85,6 +95,7 @@ export function CreateSessionForm({ onSuccess }: CreateSessionFormProps) {
     setDate('');
     setRegistrationStartTime('');
     setStartTime('');
+    setEndTime('');
     setComments('');
     setError('');
     setIsOpen(false);
@@ -127,7 +138,7 @@ export function CreateSessionForm({ onSuccess }: CreateSessionFormProps) {
             </p>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="start-time">Время начала полета *</Label>
+            <Label htmlFor="start-time">Время начала сессии *</Label>
             <Input
               id="start-time"
               type="time"
@@ -136,8 +147,18 @@ export function CreateSessionForm({ onSuccess }: CreateSessionFormProps) {
               className="input-base"
             />
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="end-time">Время окончания сессии *</Label>
+            <Input
+              id="end-time"
+              type="time"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+              className="input-base"
+            />
+          </div>
           <p className="text-xs text-muted-foreground">
-            Регистрация закроется автоматически за 60 минут до начала полета
+            Регистрация закроется автоматически за 60 минут до начала сессии
           </p>
           <p className="text-xs text-muted-foreground">
             Код сессии будет сгенерирован автоматически

@@ -10,7 +10,8 @@ export function FilterTabs({ activeFilter, onChange, counts }: FilterTabsProps) 
   const tabs: { value: FilterType; label: string }[] = [
     { value: 'all', label: 'Все' },
     { value: 'open', label: 'Открытые' },
-    { value: 'closing', label: 'Скоро закрываются' }
+    { value: 'closing', label: 'Скоро закрываются' },
+    { value: 'upcoming', label: 'Скоро откроются' }
   ];
 
   return (

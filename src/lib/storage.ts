@@ -119,20 +119,13 @@ export function calculateSessionStatus(session: Session): SessionStatus {
   const registrationStartDateTime = new Date(`${session.date}T${registrationStartTime}`);
   const sessionStartDateTime = new Date(`${session.date}T${startTime}`);
   const closingTime = new Date(sessionStartDateTime.getTime() - session.closingMinutes * 60 * 1000);
+  const sessionEndDateTime = session.endTime 
+    ? new Date(`${session.date}T${session.endTime}`)
+    : new Date(sessionStartDateTime.getTime() + 2 * 60 * 60 * 1000);
   
-  // Session is completed if current time is after start time (flight has started)
-  // For sessions without endTime, we consider them completed once the flight has started
-  if (session.endTime) {
-    const sessionEndDateTime = new Date(`${session.date}T${session.endTime}`);
-    if (now >= sessionEndDateTime) {
-      return 'completed';
-    }
-  } else {
-    // If no endTime, consider session completed 2 hours after start (default flight duration)
-    const defaultEndDateTime = new Date(sessionStartDateTime.getTime() + 2 * 60 * 60 * 1000);
-    if (now >= defaultEndDateTime) {
-      return 'completed';
-    }
+  // Session is completed if current time is after end time (or default duration)
+  if (now >= sessionEndDateTime) {
+    return 'completed';
   }
   
   // Session has started (flight has begun) but not completed yet
@@ -142,7 +135,7 @@ export function calculateSessionStatus(session: Session): SessionStatus {
   
   // Registration hasn't started yet
   if (now < registrationStartDateTime) {
-    return 'closed'; // Registration not open yet
+    return 'upcoming'; // Registration not open yet
   }
   
   // Registration is open, check if closing time is approaching
@@ -150,6 +143,10 @@ export function calculateSessionStatus(session: Session): SessionStatus {
   
   if (minutesUntilClosing <= 30 && minutesUntilClosing > 0) {
     return 'closing'; // Registration closing soon
+  }
+
+  if (minutesUntilClosing <= 0) {
+    return 'closed'; // Registration already closed before session start
   }
   
   // Registration is still open (more than 30 minutes until closing)

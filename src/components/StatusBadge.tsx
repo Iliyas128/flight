@@ -5,6 +5,7 @@ interface StatusBadgeProps {
 }
 
 const statusLabels: Record<SessionStatus, string> = {
+  upcoming: 'Скоро откроется',
   open: 'Открыта',
   closing: 'Скоро закрывается',
   closed: 'Закрыта',
