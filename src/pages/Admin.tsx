@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Shield, Plus, Trash2, Eye, EyeOff, LogOut } from 'lucide-react';
+import { Shield, Plus, Trash2, LogOut, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -257,11 +257,9 @@ const Admin = () => {
                     <TableHead>Рег. старт</TableHead>
                     <TableHead>Старт</TableHead>
                     <TableHead>Конец</TableHead>
-                    <TableHead>Закрытие (мин)</TableHead>
                     <TableHead>Статус</TableHead>
                     <TableHead>Создатель</TableHead>
                     <TableHead>Создано</TableHead>
-                    <TableHead>Комментарии</TableHead>
                     <TableHead>Действия</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -273,13 +271,9 @@ const Admin = () => {
                       <TableCell>{session.registrationStartTime}</TableCell>
                       <TableCell>{session.startTime}</TableCell>
                       <TableCell>{session.endTime || '—'}</TableCell>
-                      <TableCell>{session.closingMinutes}</TableCell>
                       <TableCell>{formatStatusRu(session.status)}</TableCell>
                       <TableCell>{session.createdByName || '—'}</TableCell>
                       <TableCell>{formatCreatedAt(session.createdAt)}</TableCell>
-                      <TableCell className="max-w-[240px] truncate" title={session.comments || ''}>
-                        {session.comments?.trim() ? session.comments : '—'}
-                      </TableCell>
                       <TableCell>
                         {session.status === 'completed' ? (
                           <Button
@@ -313,7 +307,7 @@ const Admin = () => {
             </DialogHeader>
             <form onSubmit={handleCreateDispatcher} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Имя</Label>
+                <Label htmlFor="name">Имя диспетчера</Label>
                 <Input
                   id="name"
                   value={newDispatcher.name}
@@ -323,7 +317,7 @@ const Admin = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="username">Имя пользователя</Label>
+                <Label htmlFor="username">Логин</Label>
                 <Input
                   id="username"
                   value={newDispatcher.username}

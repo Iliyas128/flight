@@ -13,43 +13,60 @@ interface CreateSessionFormProps {
 
 export function CreateSessionForm({ onSuccess }: CreateSessionFormProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [date, setDate] = useState('');
-  const [registrationStartTime, setRegistrationStartTime] = useState('');
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState('');
+  const [registrationStartDateTime, setRegistrationStartDateTime] = useState('');
+  const [startDateTime, setStartDateTime] = useState('');
+  const [endDateTime, setEndDateTime] = useState('');
   const [comments, setComments] = useState('');
   const [error, setError] = useState('');
   
   // Standard closing minutes - will be configured elsewhere later
   const STANDARD_CLOSING_MINUTES = 60;
 
+  // Helper function to extract date (YYYY-MM-DD) from datetime-local value
+  const extractDate = (datetimeLocal: string): string => {
+    if (!datetimeLocal) return '';
+    return datetimeLocal.split('T')[0];
+  };
+
+  // Helper function to extract time (HH:MM) from datetime-local value
+  const extractTime = (datetimeLocal: string): string => {
+    if (!datetimeLocal) return '';
+    return datetimeLocal.split('T')[1]?.substring(0, 5) || '';
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (!date || !registrationStartTime || !startTime || !endTime) {
+    if (!registrationStartDateTime || !startDateTime || !endDateTime) {
       setError('Заполните все обязательные поля');
       return;
     }
 
-    const registrationStartDateTime = new Date(`${date}T${registrationStartTime}`);
-    const sessionStartDateTime = new Date(`${date}T${startTime}`);
-    const sessionEndDateTime = new Date(`${date}T${endTime}`);
+    const regStart = new Date(registrationStartDateTime);
+    const sessStart = new Date(startDateTime);
+    const sessEnd = new Date(endDateTime);
     
-    if (registrationStartDateTime <= new Date()) {
+    if (regStart <= new Date()) {
       setError('Дата и время начала регистрации должны быть в будущем');
       return;
     }
 
-    if (sessionStartDateTime <= registrationStartDateTime) {
+    if (sessStart <= regStart) {
       setError('Время начала сессии должно быть позже времени начала регистрации');
       return;
     }
 
-    if (sessionEndDateTime <= sessionStartDateTime) {
+    if (sessEnd <= sessStart) {
       setError('Время окончания сессии должно быть позже начала');
       return;
     }
+
+    // Extract date from registration start (use as main date for session)
+    const date = extractDate(registrationStartDateTime);
+    const registrationStartTime = extractTime(registrationStartDateTime);
+    const startTime = extractTime(startDateTime);
+    const endTime = extractTime(endDateTime);
 
     try {
       await sessionsApi.create({
@@ -61,10 +78,9 @@ export function CreateSessionForm({ onSuccess }: CreateSessionFormProps) {
         comments: comments.trim(),
       });
 
-      setDate('');
-      setRegistrationStartTime('');
-      setStartTime('');
-      setEndTime('');
+      setRegistrationStartDateTime('');
+      setStartDateTime('');
+      setEndDateTime('');
       setComments('');
       setIsOpen(false);
       onSuccess();
@@ -74,10 +90,9 @@ export function CreateSessionForm({ onSuccess }: CreateSessionFormProps) {
   };
 
   const handleClose = () => {
-    setDate('');
-    setRegistrationStartTime('');
-    setStartTime('');
-    setEndTime('');
+    setRegistrationStartDateTime('');
+    setStartDateTime('');
+    setEndDateTime('');
     setComments('');
     setError('');
     setIsOpen(false);
@@ -97,22 +112,12 @@ export function CreateSessionForm({ onSuccess }: CreateSessionFormProps) {
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="session-date">Дата *</Label>
+            <Label htmlFor="registration-start-datetime">Дата и время начала регистрации *</Label>
             <Input
-              id="session-date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="input-base"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="registration-start-time">Время начала регистрации *</Label>
-            <Input
-              id="registration-start-time"
-              type="time"
-              value={registrationStartTime}
-              onChange={(e) => setRegistrationStartTime(e.target.value)}
+              id="registration-start-datetime"
+              type="datetime-local"
+              value={registrationStartDateTime}
+              onChange={(e) => setRegistrationStartDateTime(e.target.value)}
               className="input-base"
             />
             <p className="text-xs text-muted-foreground">
@@ -120,28 +125,26 @@ export function CreateSessionForm({ onSuccess }: CreateSessionFormProps) {
             </p>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="start-time">Время начала сессии *</Label>
+            <Label htmlFor="start-datetime">Дата и время начала сессии *</Label>
             <Input
-              id="start-time"
-              type="time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
+              id="start-datetime"
+              type="datetime-local"
+              value={startDateTime}
+              onChange={(e) => setStartDateTime(e.target.value)}
               className="input-base"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="end-time">Время окончания сессии *</Label>
+            <Label htmlFor="end-datetime">Дата и время окончания сессии *</Label>
             <Input
-              id="end-time"
-              type="time"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
+              id="end-datetime"
+              type="datetime-local"
+              value={endDateTime}
+              onChange={(e) => setEndDateTime(e.target.value)}
               className="input-base"
             />
           </div>
-          <p className="text-xs text-muted-foreground">
-            Регистрация закроется автоматически за 60 минут до начала сессии
-          </p>
+
           <p className="text-xs text-muted-foreground">
             Код сессии будет сгенерирован автоматически
           </p>
