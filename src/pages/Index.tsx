@@ -6,11 +6,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { SessionCard } from '@/components/SessionCard';
 import { FilterTabs } from '@/components/FilterTabs';
 import { LoginModal } from '@/components/LoginModal';
-import { Plane, Settings } from 'lucide-react';
+import { Plane, Settings, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const Index = () => {
-  const { user, isDispatcher } = useAuth();
+  const { user, isDispatcher, isAdmin } = useAuth();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [filter, setFilter] = useState<FilterType>('all');
   const [loading, setLoading] = useState(true);
@@ -82,18 +82,27 @@ const Index = () => {
             <Plane className="h-5 w-5 text-primary" />
             <span className="font-semibold text-foreground">Запись на сессии</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {user ? (
               <>
-                <span className="text-sm text-muted-foreground">{user.name}</span>
+                <span className="text-sm text-muted-foreground hidden sm:inline">{user.name}</span>
                 {isDispatcher && (
-          <Link 
-            to="/dispatcher"
+                  <Link 
+                    to="/dispatcher"
                     className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition-colors"
-          >
-            <Settings className="h-4 w-4" />
-            <span className="hidden sm:inline">Диспетчер</span>
-          </Link>
+                  >
+                    <Settings className="h-4 w-4" />
+                    <span className="hidden sm:inline">Диспетчер</span>
+                  </Link>
+                )}
+                {isAdmin && (
+                  <Link 
+                    to="/admin"
+                    className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition-colors"
+                  >
+                    <Shield className="h-4 w-4" />
+                    <span className="hidden sm:inline">Админ</span>
+                  </Link>
                 )}
               </>
             ) : (

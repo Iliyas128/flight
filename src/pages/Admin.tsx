@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { SessionsTable } from '@/components/SessionsTable';
-import { Shield, Plus, Trash2, LogOut, Eye, EyeOff } from 'lucide-react';
+import { Shield, Plus, Trash2, LogOut, Eye, EyeOff, Menu } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -145,34 +145,53 @@ const Admin = () => {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card sticky top-0 z-20">
-        <div className="page-container py-3 sm:py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-primary" />
-            <span className="font-semibold text-foreground">Панель администратора</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm">
-                  {user?.name || 'Администратор'}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => navigate('/')}>
-                  ← Вернуться к записи
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => {
-                    logout();
-                    navigate('/');
-                  }}
-                >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Выйти
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+        <div className="page-container py-3 sm:py-4">
+          <div className="grid grid-cols-3 items-center">
+            {/* Left: Empty space */}
+            <div className="flex items-center justify-start">
+              <Shield className="h-5 w-5 text-primary md:hidden" />
+            </div>
+            
+            {/* Center: Role name */}
+            <div className="flex items-center justify-center">
+              <span className="font-semibold text-foreground text-center">
+                {user?.name || 'Администратор'}
+              </span>
+            </div>
+            
+            {/* Right: Back button and menu */}
+            <div className="flex items-center justify-end gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/')}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                ← Назад
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => navigate('/')}>
+                    ← Вернуться к записи
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => {
+                      logout();
+                      navigate('/');
+                    }}
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Выйти
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
       </header>
