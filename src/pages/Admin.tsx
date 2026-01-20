@@ -260,6 +260,7 @@ const Admin = () => {
               readOnly={false}
               allowValidityToggle={false}
               showCommentsSection={false}
+              showSessionDetails={true}
             />
           )}
         </div>

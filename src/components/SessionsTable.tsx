@@ -17,6 +17,7 @@ interface SessionsTableProps {
   readOnly?: boolean;
   allowValidityToggle?: boolean;
   showCommentsSection?: boolean;
+  showSessionDetails?: boolean; // Показывать ли данные сессии при раскрытии
 }
 
 export function SessionsTable({
@@ -27,6 +28,7 @@ export function SessionsTable({
   readOnly = false,
   allowValidityToggle,
   showCommentsSection,
+  showSessionDetails = false,
 }: SessionsTableProps) {
   const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set());
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -227,72 +229,74 @@ export function SessionsTable({
                       <tr key={`${session.id}-expanded`}>
                         <td colSpan={readOnly ? 6 : 6} className="p-0">
                           <div className="bg-slate-50 px-4 py-4 space-y-4">
-                            {/* Session Details Section */}
-                            <div className="bg-white rounded border border-border p-4">
-                              <div className="text-sm font-medium text-muted-foreground mb-3">
-                                Данные сессии:
-                              </div>
-                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-                                <div>
-                                  <span className="text-muted-foreground">Код сессии:</span>
-                                  <span className="ml-2 font-mono font-bold text-primary">{session.sessionCode}</span>
+                            {/* Session Details Section - только для админа */}
+                            {showSessionDetails && (
+                              <div className="bg-white rounded border border-border p-4">
+                                <div className="text-sm font-medium text-muted-foreground mb-3">
+                                  Данные сессии:
                                 </div>
-                                <div>
-                                  <span className="text-muted-foreground">Дата:</span>
-                                  <span className="ml-2">{session.date}</span>
-                                </div>
-                                <div>
-                                  <span className="text-muted-foreground">Регистрация начинается:</span>
-                                  <span className="ml-2">{session.registrationStartTime}</span>
-                                </div>
-                                <div>
-                                  <span className="text-muted-foreground">Начало сессии:</span>
-                                  <span className="ml-2">{session.startTime}</span>
-                                </div>
-                                <div>
-                                  <span className="text-muted-foreground">Окончание сессии:</span>
-                                  <span className="ml-2">{session.endTime || '—'}</span>
-                                </div>
-                                <div>
-                                  <span className="text-muted-foreground">Статус:</span>
-                                  <span className="ml-2">
-                                    <StatusBadge status={session.status} />
-                                  </span>
-                                </div>
-                                {session.createdByName && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
                                   <div>
-                                    <span className="text-muted-foreground">Создатель:</span>
-                                    <span className="ml-2">{session.createdByName}</span>
+                                    <span className="text-muted-foreground">Код сессии:</span>
+                                    <span className="ml-2 font-mono font-bold text-primary">{session.sessionCode}</span>
                                   </div>
-                                )}
-                                {session.createdAt && (
                                   <div>
-                                    <span className="text-muted-foreground">Создано:</span>
+                                    <span className="text-muted-foreground">Дата:</span>
+                                    <span className="ml-2">{session.date}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground">Регистрация начинается:</span>
+                                    <span className="ml-2">{session.registrationStartTime}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground">Начало сессии:</span>
+                                    <span className="ml-2">{session.startTime}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground">Окончание сессии:</span>
+                                    <span className="ml-2">{session.endTime || '—'}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground">Статус:</span>
                                     <span className="ml-2">
-                                      {(() => {
-                                        const d = new Date(session.createdAt);
-                                        const date = d.toLocaleDateString('ru-RU', {
-                                          day: '2-digit',
-                                          month: '2-digit',
-                                          year: 'numeric',
-                                        });
-                                        const time = d.toLocaleTimeString('ru-RU', {
-                                          hour: '2-digit',
-                                          minute: '2-digit',
-                                        });
-                                        return `${date} ${time}`;
-                                      })()}
+                                      <StatusBadge status={session.status} />
                                     </span>
                                   </div>
-                                )}
-                                {session.closingMinutes && (
-                                  <div>
-                                    <span className="text-muted-foreground">Закрытие за (мин):</span>
-                                    <span className="ml-2">{session.closingMinutes}</span>
-                                  </div>
-                                )}
+                                  {session.createdByName && (
+                                    <div>
+                                      <span className="text-muted-foreground">Создатель:</span>
+                                      <span className="ml-2">{session.createdByName}</span>
+                                    </div>
+                                  )}
+                                  {session.createdAt && (
+                                    <div>
+                                      <span className="text-muted-foreground">Создано:</span>
+                                      <span className="ml-2">
+                                        {(() => {
+                                          const d = new Date(session.createdAt);
+                                          const date = d.toLocaleDateString('ru-RU', {
+                                            day: '2-digit',
+                                            month: '2-digit',
+                                            year: 'numeric',
+                                          });
+                                          const time = d.toLocaleTimeString('ru-RU', {
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                          });
+                                          return `${date} ${time}`;
+                                        })()}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {session.closingMinutes && (
+                                    <div>
+                                      <span className="text-muted-foreground">Закрытие за (мин):</span>
+                                      <span className="ml-2">{session.closingMinutes}</span>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            </div>
+                            )}
 
                             {/* Top actions in expanded view */}
                             {!readOnly && (
