@@ -25,13 +25,19 @@ export function CreateSessionForm({ onSuccess }: CreateSessionFormProps) {
   // Helper function to extract date (YYYY-MM-DD) from datetime-local value
   const extractDate = (datetimeLocal: string): string => {
     if (!datetimeLocal) return '';
-    return datetimeLocal.split('T')[0];
+    const parts = datetimeLocal.split('T');
+    if (parts.length === 0 || !parts[0]) return '';
+    return parts[0];
   };
 
   // Helper function to extract time (HH:MM) from datetime-local value
   const extractTime = (datetimeLocal: string): string => {
     if (!datetimeLocal) return '';
-    return datetimeLocal.split('T')[1]?.substring(0, 5) || '';
+    const parts = datetimeLocal.split('T');
+    if (parts.length < 2 || !parts[1]) return '';
+    // Extract HH:MM from HH:MM or HH:MM:SS format
+    const timePart = parts[1];
+    return timePart.substring(0, 5);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -68,15 +74,43 @@ export function CreateSessionForm({ onSuccess }: CreateSessionFormProps) {
     const startTime = extractTime(startDateTime);
     const endTime = extractTime(endDateTime);
 
+    // Validate extracted values
+    if (!date || !registrationStartTime || !startTime || !endTime) {
+      setError('Ошибка при обработке даты и времени. Проверьте введенные данные.');
+      return;
+    }
+
+    // Validate date format (YYYY-MM-DD)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      setError('Неверный формат даты');
+      return;
+    }
+
+    // Validate time format (HH:MM)
+    const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/;
+    if (!timeRegex.test(registrationStartTime) || !timeRegex.test(startTime) || !timeRegex.test(endTime)) {
+      setError('Неверный формат времени');
+      return;
+    }
+
     try {
-      await sessionsApi.create({
+      const sessionData: any = {
         date,
         registrationStartTime,
         startTime,
-        endTime,
         closingMinutes: STANDARD_CLOSING_MINUTES,
         comments: comments.trim(),
-      });
+      };
+
+      // Only include endTime if it's provided
+      if (endTime) {
+        sessionData.endTime = endTime;
+      }
+
+      // Debug: log the data being sent
+      console.log('Creating session with data:', sessionData);
+
+      await sessionsApi.create(sessionData);
 
       setRegistrationStartDateTime('');
       setStartDateTime('');
@@ -85,7 +119,24 @@ export function CreateSessionForm({ onSuccess }: CreateSessionFormProps) {
       setIsOpen(false);
       onSuccess();
     } catch (err: any) {
-      setError(err.message || 'Ошибка при создании сессии');
+      console.error('Error creating session:', err);
+      // Extract error message from API response
+      let errorMessage = 'Ошибка при создании сессии';
+      
+      // Check for Zod validation errors
+      if (err.details && Array.isArray(err.details)) {
+        const messages = err.details.map((d: any) => {
+          if (typeof d === 'string') return d;
+          return d.message || `${d.path?.join('.') || 'Поле'}: ${d.message || 'неверное значение'}`;
+        });
+        errorMessage = messages.join(', ');
+      } else if (err.message) {
+        errorMessage = err.message;
+      } else if (typeof err === 'string') {
+        errorMessage = err;
+      }
+      
+      setError(errorMessage);
     }
   };
 

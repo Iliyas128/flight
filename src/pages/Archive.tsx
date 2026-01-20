@@ -21,11 +21,11 @@ const Archive = () => {
         participantsApi.getAll(),
       ]);
       
-      completed.sort((a, b) => {
+    completed.sort((a, b) => {
         const dateA = new Date(`${a.date}T${a.startTime || '00:00'}`);
         const dateB = new Date(`${b.date}T${b.startTime || '00:00'}`);
-        return dateB.getTime() - dateA.getTime(); // Most recent first
-      });
+      return dateB.getTime() - dateA.getTime(); // Most recent first
+    });
       
       // Для диспетчера показываем только его сессии, админ видит все
       const filtered = isAdmin

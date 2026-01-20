@@ -15,13 +15,25 @@ interface SessionsTableProps {
   onDelete?: (id: string) => void;
   onUpdate?: () => void;
   readOnly?: boolean;
+  allowValidityToggle?: boolean;
+  showCommentsSection?: boolean;
 }
 
-export function SessionsTable({ sessions, participants, onDelete, onUpdate, readOnly = false }: SessionsTableProps) {
+export function SessionsTable({
+  sessions,
+  participants,
+  onDelete,
+  onUpdate,
+  readOnly = false,
+  allowValidityToggle,
+  showCommentsSection,
+}: SessionsTableProps) {
   const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set());
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [editingComments, setEditingComments] = useState<string | null>(null);
   const [commentsValue, setCommentsValue] = useState('');
+  const canToggleValidity = allowValidityToggle ?? !readOnly;
+  const canShowComments = showCommentsSection ?? !readOnly;
 
   const getParticipantCount = (sessionId: string) => {
     return participants.filter(p => p.sessionId === sessionId).length;
@@ -33,9 +45,13 @@ export function SessionsTable({ sessions, participants, onDelete, onUpdate, read
 
   const handleDelete = async (id: string) => {
     try {
-      await sessionsApi.delete(id);
       setDeleteConfirm(null);
-      onDelete?.(id);
+      if (onDelete) {
+        onDelete(id);
+        return;
+      }
+      await sessionsApi.delete(id);
+      onUpdate?.();
     } catch (err) {
       console.error('Error deleting session:', err);
     }
@@ -209,8 +225,75 @@ export function SessionsTable({ sessions, participants, onDelete, onUpdate, read
                     </tr>
                     {isExpanded && (
                       <tr key={`${session.id}-expanded`}>
-                        <td colSpan={6} className="p-0">
+                        <td colSpan={readOnly ? 6 : 6} className="p-0">
                           <div className="bg-slate-50 px-4 py-4 space-y-4">
+                            {/* Session Details Section */}
+                            <div className="bg-white rounded border border-border p-4">
+                              <div className="text-sm font-medium text-muted-foreground mb-3">
+                                Данные сессии:
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                                <div>
+                                  <span className="text-muted-foreground">Код сессии:</span>
+                                  <span className="ml-2 font-mono font-bold text-primary">{session.sessionCode}</span>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">Дата:</span>
+                                  <span className="ml-2">{session.date}</span>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">Регистрация начинается:</span>
+                                  <span className="ml-2">{session.registrationStartTime}</span>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">Начало сессии:</span>
+                                  <span className="ml-2">{session.startTime}</span>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">Окончание сессии:</span>
+                                  <span className="ml-2">{session.endTime || '—'}</span>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">Статус:</span>
+                                  <span className="ml-2">
+                                    <StatusBadge status={session.status} />
+                                  </span>
+                                </div>
+                                {session.createdByName && (
+                                  <div>
+                                    <span className="text-muted-foreground">Создатель:</span>
+                                    <span className="ml-2">{session.createdByName}</span>
+                                  </div>
+                                )}
+                                {session.createdAt && (
+                                  <div>
+                                    <span className="text-muted-foreground">Создано:</span>
+                                    <span className="ml-2">
+                                      {(() => {
+                                        const d = new Date(session.createdAt);
+                                        const date = d.toLocaleDateString('ru-RU', {
+                                          day: '2-digit',
+                                          month: '2-digit',
+                                          year: 'numeric',
+                                        });
+                                        const time = d.toLocaleTimeString('ru-RU', {
+                                          hour: '2-digit',
+                                          minute: '2-digit',
+                                        });
+                                        return `${date} ${time}`;
+                                      })()}
+                                    </span>
+                                  </div>
+                                )}
+                                {session.closingMinutes && (
+                                  <div>
+                                    <span className="text-muted-foreground">Закрытие за (мин):</span>
+                                    <span className="ml-2">{session.closingMinutes}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
                             {/* Top actions in expanded view */}
                             {!readOnly && (
                               <div className="flex justify-end mb-2">
@@ -225,11 +308,11 @@ export function SessionsTable({ sessions, participants, onDelete, onUpdate, read
                             )}
 
                             {/* Comments Section */}
-                            {!readOnly && (
+                            {canShowComments && (
                               <div>
                                 <div className="flex items-center justify-between mb-2">
                                   <Label className="text-sm font-medium">Комментарии</Label>
-                                  {editingComments !== session.id && (
+                                  {!readOnly && editingComments !== session.id && (
                                     <Button
                                       variant="ghost"
                                       size="sm"
@@ -239,7 +322,7 @@ export function SessionsTable({ sessions, participants, onDelete, onUpdate, read
                                     </Button>
                                   )}
                                 </div>
-                                {editingComments === session.id ? (
+                                {!readOnly && editingComments === session.id ? (
                                   <div className="space-y-2">
                                     <Textarea
                                       value={commentsValue}
@@ -291,7 +374,7 @@ export function SessionsTable({ sessions, participants, onDelete, onUpdate, read
                                       <tr>
                                         <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">Имя</th>
                                         <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">Код валидности</th>
-                                        {!readOnly && (
+                                        {canToggleValidity && (
                                           <th className="px-3 py-2 text-center text-xs font-medium text-muted-foreground w-24">Валидность</th>
                                         )}
                                       </tr>
@@ -316,7 +399,7 @@ export function SessionsTable({ sessions, participants, onDelete, onUpdate, read
                                             <td className="px-3 py-2">
                                               <span className="font-mono">{p.validationCode}</span>
                                             </td>
-                                            {!readOnly && (
+                                            {canToggleValidity && (
                                               <td className="px-3 py-2 text-center">
                                                 <Button
                                                   variant="ghost"

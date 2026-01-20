@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { authApi, sessionsApi } from '@/lib/api';
-import { User, Session } from '@/types';
+import { authApi, sessionsApi, participantsApi } from '@/lib/api';
+import { User, Session, Participant } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { SessionsTable } from '@/components/SessionsTable';
 import { Shield, Plus, Trash2, LogOut, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -23,6 +24,7 @@ const Admin = () => {
   const navigate = useNavigate();
   const [dispatchers, setDispatchers] = useState<User[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showPassword, setShowPassword] = useState<Record<string, boolean>>({});
@@ -43,9 +45,10 @@ const Admin = () => {
 
   const loadData = async () => {
     try {
-      const [dispatchersData, sessionsData] = await Promise.all([
+      const [dispatchersData, sessionsData, participantsData] = await Promise.all([
         authApi.getDispatchers(),
         sessionsApi.getAll('all'),
+        participantsApi.getAll(),
       ]);
       setDispatchers(dispatchersData);
       sessionsData.sort((a, b) => {
@@ -54,6 +57,7 @@ const Admin = () => {
         return createdB - createdA;
       });
       setSessions(sessionsData);
+      setParticipants(participantsData);
     } catch (err: any) {
       toast.error(err.message || 'Ошибка при загрузке данных');
     } finally {
@@ -248,51 +252,15 @@ const Admin = () => {
           ) : sessions.length === 0 ? (
             <p className="text-muted-foreground">Сессий нет</p>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Код</TableHead>
-                    <TableHead>Дата</TableHead>
-                    <TableHead>Рег. старт</TableHead>
-                    <TableHead>Старт</TableHead>
-                    <TableHead>Конец</TableHead>
-                    <TableHead>Статус</TableHead>
-                    <TableHead>Создатель</TableHead>
-                    <TableHead>Создано</TableHead>
-                    <TableHead>Действия</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sessions.map((session) => (
-                    <TableRow key={session.id}>
-                      <TableCell className="font-mono font-bold">{session.sessionCode}</TableCell>
-                      <TableCell>{session.date}</TableCell>
-                      <TableCell>{session.registrationStartTime}</TableCell>
-                      <TableCell>{session.startTime}</TableCell>
-                      <TableCell>{session.endTime || '—'}</TableCell>
-                      <TableCell>{formatStatusRu(session.status)}</TableCell>
-                      <TableCell>{session.createdByName || '—'}</TableCell>
-                      <TableCell>{formatCreatedAt(session.createdAt)}</TableCell>
-                      <TableCell>
-                        {session.status === 'completed' ? (
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDeleteSession(session.id)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Удалить из архива
-                          </Button>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+            <SessionsTable 
+              sessions={sessions}
+              participants={participants}
+              onUpdate={loadData}
+              onDelete={handleDeleteSession}
+              readOnly={false}
+              allowValidityToggle={false}
+              showCommentsSection={false}
+            />
           )}
         </div>
 

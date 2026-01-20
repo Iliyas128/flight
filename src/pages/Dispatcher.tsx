@@ -22,8 +22,8 @@ const Dispatcher = () => {
       upcomingSessions.sort((a, b) => {
         const dateA = new Date(`${a.date}T${a.startTime || '00:00'}`);
         const dateB = new Date(`${b.date}T${b.startTime || '00:00'}`);
-        return dateA.getTime() - dateB.getTime();
-      });
+      return dateA.getTime() - dateB.getTime();
+    });
       
       setSessions(upcomingSessions);
       setParticipants(allParticipants);
