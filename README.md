@@ -1,55 +1,78 @@
-# Flight Connect
+# Flight Connect - Frontend
 
-## Project info
+React приложение для управления авиационными сессиями.
 
-Flight Connect application for managing flight connections.
+## Функционал
 
-## How can I edit this code?
+### Сайт А (Главная страница)
 
-If you want to work locally using your own IDE, clone this repo and push changes.
+Публичная страница для пилотов с возможностью:
+- Просмотра списка предстоящих сессий
+- Фильтрации сессий по статусу
+- Регистрации на открытые сессии
+- Входа/регистрации в системе
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+**Зеленые кнопки** (доступны всем):
+- Фильтры сессий
+- Кнопка "Записаться"
+- Кнопка "Войти"
 
-Follow these steps:
+**Синие кнопки** (только для диспетчеров):
+- Кнопка "Диспетчер" в заголовке
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### Страница диспетчера
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+Доступна только авторизованным диспетчерам:
+- Создание новых сессий
+- Управление сессиями
+- Проверка валидности участников
+- Просмотр архива
 
-# Step 3: Install the necessary dependencies.
-npm i
+**Синие кнопки** (только на странице диспетчера):
+- "Создать сессию"
+- "Редактировать" комментарии
+- "Сохранить" комментарии
+- Кнопки переключения валидности
+- "Удалить" сессию
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+### Панель администратора
+
+Доступна только администраторам:
+- Создание диспетчеров
+- Удаление сессий из архива
+
+## Установка
+
+```bash
+npm install
+```
+
+## Конфигурация
+
+Создайте файл `.env`:
+```env
+VITE_API_BASE_URL=http://localhost:3000/api
+```
+
+## Запуск
+
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Приложение будет доступно по адресу `http://localhost:8080`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Сборка
 
-**Use GitHub Codespaces**
+```bash
+npm run build
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Технологии
 
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
+- React 19
 - TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-You can deploy this project using any static hosting service like Vercel, Netlify, or GitHub Pages.
+- React Router 7
+- Tailwind CSS 4
+- shadcn/ui
+- TanStack Query

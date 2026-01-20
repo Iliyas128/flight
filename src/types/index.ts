@@ -1,5 +1,7 @@
 export type SessionStatus = 'upcoming' | 'open' | 'closing' | 'closed' | 'completed';
 
+export type UserRole = 'pilot' | 'dispatcher' | 'admin';
+
 export interface Session {
   id: string;
   sessionCode: string; // 3-letter unique code (auto-generated)
@@ -11,6 +13,8 @@ export interface Session {
   closingMinutes: number; // minutes before session when registration closes
   comments: string; // Dispatcher comments
   createdAt: string;
+  /** Имя создателя/диспетчера, может быть пустым для старых данных */
+  createdByName?: string;
 }
 
 export interface Participant {
@@ -21,6 +25,15 @@ export interface Participant {
   code: string; // Personal code for participant
   isValid: boolean | null; // null = not checked, true = valid, false = invalid
   registeredAt: string;
+}
+
+export interface User {
+  id: string;
+  username: string;
+  role: UserRole;
+  name: string;
+  /** Только для админки (для диспетчеров) */
+  plainPassword?: string | null;
 }
 
 export type FilterType = 'all' | 'open' | 'closing' | 'upcoming';

@@ -1,7 +1,8 @@
 import { useState, Fragment } from 'react';
 import { Session, Participant } from '@/types';
 import { StatusBadge } from './StatusBadge';
-import { formatDateTime, formatDate, deleteSession, updateParticipantValidity, updateSessionComments } from '@/lib/storage';
+import { formatDateTime, formatDate } from '@/lib/utils';
+import { sessionsApi, participantsApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -30,13 +31,17 @@ export function SessionsTable({ sessions, participants, onDelete, onUpdate, read
     return participants.filter(p => p.sessionId === sessionId);
   };
 
-  const handleDelete = (id: string) => {
-    deleteSession(id);
-    setDeleteConfirm(null);
-    onDelete?.(id);
+  const handleDelete = async (id: string) => {
+    try {
+      await sessionsApi.delete(id);
+      setDeleteConfirm(null);
+      onDelete?.(id);
+    } catch (err) {
+      console.error('Error deleting session:', err);
+    }
   };
 
-  const handleToggleValidity = (participantId: string, currentValidity: boolean | null) => {
+  const handleToggleValidity = async (participantId: string, currentValidity: boolean | null) => {
     // Toggle: null -> true -> false -> true (cycle)
     let newValidity: boolean | null;
     if (currentValidity === null || currentValidity === false) {
@@ -44,9 +49,13 @@ export function SessionsTable({ sessions, participants, onDelete, onUpdate, read
     } else {
       newValidity = false; // Mark as invalid
     }
-    updateParticipantValidity(participantId, newValidity);
-    // Update data
-    onUpdate?.();
+    try {
+      await participantsApi.update(participantId, { isValid: newValidity });
+      // Update data
+      onUpdate?.();
+    } catch (err) {
+      console.error('Error updating participant validity:', err);
+    }
   };
 
   const handleEditComments = (session: Session) => {
@@ -59,12 +68,16 @@ export function SessionsTable({ sessions, participants, onDelete, onUpdate, read
     setCommentsValue(session.comments || '');
   };
 
-  const handleSaveComments = (sessionId: string) => {
-    updateSessionComments(sessionId, commentsValue);
-    setEditingComments(null);
-    setCommentsValue('');
-    // Update data to reflect changes
-    onUpdate?.();
+  const handleSaveComments = async (sessionId: string) => {
+    try {
+      await sessionsApi.update(sessionId, { comments: commentsValue });
+      setEditingComments(null);
+      setCommentsValue('');
+      // Update data to reflect changes
+      onUpdate?.();
+    } catch (err) {
+      console.error('Error updating session comments:', err);
+    }
   };
 
   if (sessions.length === 0) {
@@ -84,7 +97,15 @@ export function SessionsTable({ sessions, participants, onDelete, onUpdate, read
               <tr className="border-b border-border">
                 <th className="table-header table-cell">Код сессии</th>
                 <th className="table-header table-cell hidden sm:table-cell">Дата и время</th>
-                {readOnly && <th className="table-header table-cell hidden sm:table-cell">Дата создания</th>}
+                {/* Дата и время создания видна как диспетчеру, так и в архиве */}
+                <th className="table-header table-cell hidden sm:table-cell">
+                  Дата и время создания
+                </th>
+                {readOnly && (
+                  <th className="table-header table-cell hidden sm:table-cell">
+                    Валидные ключи
+                  </th>
+                )}
                 <th className="table-header table-cell">Статус</th>
                 <th className="table-header table-cell text-center">Участники</th>
                 {!readOnly && <th className="table-header table-cell w-20"></th>}
@@ -110,11 +131,38 @@ export function SessionsTable({ sessions, participants, onDelete, onUpdate, read
                         </div>
                       </td>
                       <td className="table-cell text-muted-foreground hidden sm:table-cell">
-                        {formatDateTime(session.date, session.startTime || (session as any).time || '00:00', session.endTime)}
+                        {formatDateTime(
+                          session.date,
+                          session.startTime || (session as any).time || '00:00',
+                          session.endTime
+                        )}
+                      </td>
+                      <td className="table-cell text-muted-foreground hidden sm:table-cell text-sm">
+                        {session.createdAt
+                          ? (() => {
+                              const d = new Date(session.createdAt);
+                              const date = d.toLocaleDateString('ru-RU', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                              });
+                              const time = d.toLocaleTimeString('ru-RU', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              });
+                              return `${date} ${time}`;
+                            })()
+                          : '—'}
                       </td>
                       {readOnly && (
-                        <td className="table-cell text-muted-foreground hidden sm:table-cell text-sm">
-                          {session.createdAt ? formatDate(session.createdAt) : '—'}
+                        <td className="table-cell text-center hidden sm:table-cell">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="bg-sky-50 text-sky-700 hover:bg-sky-100"
+                          >
+                            Валидные ключи
+                          </Button>
                         </td>
                       )}
                       <td className="table-cell">
@@ -161,8 +209,21 @@ export function SessionsTable({ sessions, participants, onDelete, onUpdate, read
                     </tr>
                     {isExpanded && (
                       <tr key={`${session.id}-expanded`}>
-                        <td colSpan={readOnly ? 5 : 5} className="p-0">
+                        <td colSpan={6} className="p-0">
                           <div className="bg-slate-50 px-4 py-4 space-y-4">
+                            {/* Top actions in expanded view */}
+                            {!readOnly && (
+                              <div className="flex justify-end mb-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="bg-sky-50 text-sky-700 hover:bg-sky-100"
+                                >
+                                  Валидные ключи
+                                </Button>
+                              </div>
+                            )}
+
                             {/* Comments Section */}
                             {!readOnly && (
                               <div>

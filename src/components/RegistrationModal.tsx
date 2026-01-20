@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Session } from '@/types';
-import { addParticipant, generateCode, generateId } from '@/lib/storage';
+import { participantsApi } from '@/lib/api';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,7 @@ export function RegistrationModal({ session, isOpen, onClose, onSuccess }: Regis
   const [validationCode, setValidationCode] = useState('');
   const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -34,21 +34,21 @@ export function RegistrationModal({ session, isOpen, onClose, onSuccess }: Regis
       return;
     }
 
-    addParticipant({
-      id: generateId(),
-      sessionId: session.id,
-      name: name.trim(),
-      validationCode: validationCode.trim().toUpperCase(),
-      code: '', // No code for pilots
-      isValid: null, // Will be checked by dispatcher later
-      registeredAt: new Date().toISOString()
-    });
+    try {
+      await participantsApi.create({
+        sessionId: session.id,
+        name: name.trim(),
+        validationCode: validationCode.trim().toUpperCase(),
+      });
 
-    // Close modal and reset form
-    setName('');
-    setValidationCode('');
-    onClose();
-    onSuccess();
+      // Close modal and reset form
+      setName('');
+      setValidationCode('');
+      onClose();
+      onSuccess();
+    } catch (err: any) {
+      setError(err.message || 'Ошибка при регистрации');
+    }
   };
 
   const handleClose = () => {

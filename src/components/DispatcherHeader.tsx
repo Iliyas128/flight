@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { LayoutDashboard, Archive, Menu, X, Plane } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { LayoutDashboard, Archive, Menu, X, Plane, Shield, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
@@ -15,6 +17,7 @@ const navItems = [
 ];
 
 export function DispatcherHeader() {
+  const { user, logout, isAdmin } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
 
@@ -96,14 +99,33 @@ export function DispatcherHeader() {
             </DropdownMenu>
           </div>
 
-          {/* Desktop: Back link */}
-          <div className="hidden md:block">
-            <Link
-              to="/"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              ← Вернуться к записи
-            </Link>
+          {/* Desktop: User menu */}
+          <div className="hidden md:flex items-center gap-3">
+            {isAdmin && (
+              <Link to="/admin">
+                <Button variant="ghost" size="sm">
+                  <Shield className="h-4 w-4 mr-2" />
+                  Админ
+                </Button>
+              </Link>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  {user?.name || 'Пользователь'}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <Link to="/">← Вернуться к записи</Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={logout}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Выйти
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>

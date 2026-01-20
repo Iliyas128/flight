@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { addSession, generateId, calculateSessionStatus, generateUniqueSessionCode } from '@/lib/storage';
+import { sessionsApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,7 +23,7 @@ export function CreateSessionForm({ onSuccess }: CreateSessionFormProps) {
   // Standard closing minutes - will be configured elsewhere later
   const STANDARD_CLOSING_MINUTES = 60;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -51,44 +51,26 @@ export function CreateSessionForm({ onSuccess }: CreateSessionFormProps) {
       return;
     }
 
-    // Generate unique session code automatically
-    const sessionCode = generateUniqueSessionCode();
+    try {
+      await sessionsApi.create({
+        date,
+        registrationStartTime,
+        startTime,
+        endTime,
+        closingMinutes: STANDARD_CLOSING_MINUTES,
+        comments: comments.trim(),
+      });
 
-    const tempSession = {
-      id: '',
-      sessionCode: '',
-      date,
-      registrationStartTime,
-      startTime,
-      endTime,
-      closingMinutes: STANDARD_CLOSING_MINUTES,
-      comments: '',
-      status: 'open' as const,
-      createdAt: ''
-    };
-    
-    const newSession = {
-      id: generateId(),
-      sessionCode,
-      date,
-      registrationStartTime,
-      startTime,
-      endTime,
-      closingMinutes: STANDARD_CLOSING_MINUTES,
-      comments: comments.trim(),
-      status: calculateSessionStatus(tempSession),
-      createdAt: new Date().toISOString()
-    };
-
-    addSession(newSession);
-
-    setDate('');
-    setRegistrationStartTime('');
-    setStartTime('');
-    setEndTime('');
-    setComments('');
-    setIsOpen(false);
-    onSuccess();
+      setDate('');
+      setRegistrationStartTime('');
+      setStartTime('');
+      setEndTime('');
+      setComments('');
+      setIsOpen(false);
+      onSuccess();
+    } catch (err: any) {
+      setError(err.message || 'Ошибка при создании сессии');
+    }
   };
 
   const handleClose = () => {
