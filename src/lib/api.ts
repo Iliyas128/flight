@@ -177,3 +177,24 @@ export const authApi = {
     return request<User[]>('/auth/dispatchers');
   },
 };
+
+// Valid Keys API
+export interface ValidKey {
+  id: string;
+  key: string;
+  pilotName: string;
+  sessionId: string;
+  createdAt: string;
+}
+
+export interface ValidKeysResponse {
+  sessionId: string;
+  keys: ValidKey[];
+  count: number;
+}
+
+export const validKeysApi = {
+  getBySession: async (sessionId: string): Promise<ValidKeysResponse> => {
+    return request<ValidKeysResponse>(`/valid-keys/${sessionId}`);
+  },
+};

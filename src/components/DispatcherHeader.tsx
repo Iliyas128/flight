@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { LayoutDashboard, Archive, Menu, X, Plane, Shield, LogOut } from 'lucide-react';
+import { Archive, Menu, X, Plane, Shield, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -12,7 +12,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 const navItems = [
-  { path: '/dispatcher', label: 'Управление', icon: LayoutDashboard },
   { path: '/dispatcher/archive', label: 'Архив', icon: Archive },
 ];
 
@@ -27,7 +26,7 @@ export function DispatcherHeader() {
         <div className="grid grid-cols-3 items-center h-14">
           {/* Left: Logo (desktop) or empty (mobile) */}
           <div className="flex items-center justify-start">
-            <Link to="/dispatcher" className="hidden md:flex items-center gap-2 hover:opacity-80 transition-opacity">
+            <Link to="/" className="hidden md:flex items-center gap-2 hover:opacity-80 transition-opacity">
               <Plane className="h-5 w-5 text-primary" />
               <span className="font-semibold text-foreground">
                 Диспетчер

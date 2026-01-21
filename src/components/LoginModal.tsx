@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,7 @@ interface LoginModalProps {
 
 export function LoginModal({ isOpen, onClose }: LoginModalProps) {
   const { login } = useAuth();
+  const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -29,10 +31,14 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
     setLoading(true);
 
     try {
-      await login(username, password);
+      const response = await login(username, password);
       setUsername('');
       setPassword('');
       onClose();
+      // Redirect admin to admin page immediately after login
+      if (response?.user?.role === 'admin') {
+        navigate('/admin', { replace: true });
+      }
     } catch (err: any) {
       setError(err.message || 'Неверное имя пользователя или пароль');
     } finally {

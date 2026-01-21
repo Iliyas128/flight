@@ -6,7 +6,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
-import Dispatcher from "./pages/Dispatcher";
 import Archive from "./pages/Archive";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
@@ -27,14 +26,6 @@ const App = () => (
         >
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route 
-              path="/dispatcher" 
-              element={
-                <ProtectedRoute requireRole="dispatcher">
-                  <Dispatcher />
-                </ProtectedRoute>
-              } 
-            />
             <Route 
               path="/dispatcher/archive" 
               element={

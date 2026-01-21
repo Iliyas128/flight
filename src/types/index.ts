@@ -5,6 +5,7 @@ export type UserRole = 'pilot' | 'dispatcher' | 'admin';
 export interface Session {
   id: string;
   sessionCode: string; // 3-letter unique code (auto-generated)
+  sessionNumber?: number; // 4-digit session number (0001, 0002, etc.)
   date: string; // ISO date string
   registrationStartTime: string; // HH:mm format - when pilots can start registering
   startTime: string; // HH:mm format - session start time

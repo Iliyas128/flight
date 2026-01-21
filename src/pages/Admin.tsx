@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { authApi, sessionsApi, participantsApi } from '@/lib/api';
-import { User, Session, Participant } from '@/types';
+import { authApi, sessionsApi } from '@/lib/api';
+import { User, Session } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { SessionsTable } from '@/components/SessionsTable';
-import { Shield, Plus, Trash2, LogOut, Eye, EyeOff, Menu } from 'lucide-react';
+import { Shield, Plus, Trash2, LogOut, Eye, EyeOff, Menu, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -24,7 +23,6 @@ const Admin = () => {
   const navigate = useNavigate();
   const [dispatchers, setDispatchers] = useState<User[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showPassword, setShowPassword] = useState<Record<string, boolean>>({});
@@ -33,49 +31,46 @@ const Admin = () => {
     password: '',
     name: '',
   });
-  const [error, setError] = useState('');
 
+  // Redirect if not admin
   useEffect(() => {
     if (!isAdmin) {
-      navigate('/');
-      return;
+      navigate('/', { replace: true });
     }
-    loadData();
   }, [isAdmin, navigate]);
 
   const loadData = async () => {
     try {
-      const [dispatchersData, sessionsData, participantsData] = await Promise.all([
+      setLoading(true);
+      const [dispatchersData, sessionsData] = await Promise.all([
         authApi.getDispatchers(),
-        sessionsApi.getAll('all'),
-        participantsApi.getAll(),
+        sessionsApi.getCompleted(), // Only completed sessions for archive
       ]);
       setDispatchers(dispatchersData);
-      sessionsData.sort((a, b) => {
-        const createdA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const createdB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return createdB - createdA;
-      });
       setSessions(sessionsData);
-      setParticipants(participantsData);
     } catch (err: any) {
+      console.error('Error loading admin data:', err);
       toast.error(err.message || 'Ошибка при загрузке данных');
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    if (isAdmin) {
+      loadData();
+    }
+  }, [isAdmin]);
+
   const handleCreateDispatcher = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-
     if (!newDispatcher.username || !newDispatcher.password || !newDispatcher.name) {
-      setError('Заполните все поля');
+      toast.error('Заполните все поля');
       return;
     }
 
     if (newDispatcher.password.length < 6) {
-      setError('Пароль должен быть не менее 6 символов');
+      toast.error('Пароль должен содержать минимум 6 символов');
       return;
     }
 
@@ -85,12 +80,12 @@ const Admin = () => {
         newDispatcher.password,
         newDispatcher.name
       );
-      toast.success(`Диспетчер создан. Пароль: ${created.password}`);
+      toast.success(`Диспетчер ${created.name} создан. Пароль: ${created.password}`);
       setNewDispatcher({ username: '', password: '', name: '' });
       setShowCreateDialog(false);
       loadData();
     } catch (err: any) {
-      setError(err.message || 'Ошибка при создании диспетчера');
+      toast.error(err.message || 'Ошибка при создании диспетчера');
     }
   };
 
@@ -115,231 +110,284 @@ const Admin = () => {
     }));
   };
 
-  const formatCreatedAt = (value?: string) => {
-    if (!value) return '—';
-    const d = new Date(value);
-    const date = d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    const time = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-    return `${date} ${time}`;
-  };
-
-  const formatStatusRu = (status: Session['status']) => {
-    switch (status) {
-      case 'open':
-        return 'Открыта';
-      case 'closing':
-        return 'Скоро закрывается';
-      case 'closed':
-        return 'Закрыта';
-      case 'completed':
-        return 'Завершена';
-      default:
-        return status;
-    }
-  };
-
   if (!isAdmin) {
     return null;
   }
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card sticky top-0 z-20">
-        <div className="page-container py-3 sm:py-4">
-          <div className="grid grid-cols-3 items-center">
-            {/* Left: Empty space */}
+      {/* Header */}
+      <header className="sticky top-0 z-50 border-b border-border bg-card shadow-sm">
+        <div className="page-container">
+          <div className="grid grid-cols-3 items-center h-14">
+            {/* Left: Logo */}
             <div className="flex items-center justify-start">
+              <div className="hidden md:flex items-center gap-2">
+                <Shield className="h-5 w-5 text-primary" />
+                <span className="font-semibold text-foreground">Администратор</span>
+              </div>
               <Shield className="h-5 w-5 text-primary md:hidden" />
             </div>
-            
-            {/* Center: Role name */}
+
+            {/* Center: Title (mobile) */}
             <div className="flex items-center justify-center">
-              <span className="font-semibold text-foreground text-center">
-                {user?.name || 'Администратор'}
+              <span className="font-semibold text-foreground text-center md:hidden">
+                Панель администратора
               </span>
             </div>
-            
+
             {/* Right: Back button and menu */}
             <div className="flex items-center justify-end gap-2">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate('/')}
-                className="text-muted-foreground hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground md:hidden"
               >
-                ← Назад
+                ← Вернуться к записи
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
+                  <Button variant="ghost" size="icon" className="md:hidden">
                     <Menu className="h-5 w-5" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => navigate('/')}>
-                    ← Вернуться к записи
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem asChild>
+                    <button
+                      onClick={() => navigate('/')}
+                      className="w-full text-left"
+                    >
+                      ← Вернуться к записи
+                    </button>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => {
-                      logout();
-                      navigate('/');
-                    }}
-                  >
+                  <DropdownMenuItem onClick={logout}>
                     <LogOut className="h-4 w-4 mr-2" />
                     Выйти
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              
+              {/* Desktop: User menu */}
+              <div className="hidden md:flex items-center gap-3">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm">
+                      {user?.name || 'Администратор'}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem asChild>
+                      <button onClick={() => navigate('/')} className="w-full text-left">
+                        ← Вернуться к записи
+                      </button>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={logout}>
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Выйти
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="page-container py-6">
-        <div className="mb-6">
-          <h1 className="page-title mb-1">Управление системой</h1>
-          <p className="text-sm text-muted-foreground">
-            Управление диспетчерами и архивом сессий
-          </p>
-        </div>
-
-        {/* Dispatchers Section */}
-        <div className="card-base p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">Диспетчеры</h2>
-            <Button onClick={() => setShowCreateDialog(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Создать диспетчера
-            </Button>
+      <div className="page-container py-6">
+        <div className="space-y-8">
+          {/* Page Title */}
+          <div>
+            <h1 className="page-title mb-1">Панель администратора</h1>
+            <p className="text-sm text-muted-foreground">
+              Создание диспетчеров и управление архивом сессий
+            </p>
           </div>
 
-          {loading ? (
-            <p className="text-muted-foreground">Загрузка...</p>
-          ) : dispatchers.length === 0 ? (
-            <p className="text-muted-foreground">Нет диспетчеров</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Логин</TableHead>
-                  <TableHead>Имя диспетчера</TableHead>
-                  <TableHead>Пароль</TableHead>
-                  <TableHead>Действия</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {dispatchers.map((dispatcher) => (
-                  <TableRow key={dispatcher.id}>
-                    <TableCell>{dispatcher.username}</TableCell>
-                    <TableCell>{dispatcher.name}</TableCell>
-                    <TableCell className="font-mono text-sm">
-                      {showPassword[dispatcher.id] ? (dispatcher.plainPassword || '—') : '••••••••'}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => togglePasswordVisibility(dispatcher.id)}
-                      >
-                        {showPassword[dispatcher.id] ? (
-                          <>
-                            <EyeOff className="h-4 w-4 mr-2" />
-                            Скрыть пароль
-                          </>
-                        ) : (
-                          <>
-                            <Eye className="h-4 w-4 mr-2" />
-                            Показать пароль
-                          </>
-                        )}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+          {/* Dispatchers Section */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-xl font-semibold">Диспетчеры</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Создавайте учетные записи диспетчеров и предоставляйте им пароли для входа
+                </p>
+              </div>
+              <Button onClick={() => setShowCreateDialog(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Создать диспетчера
+              </Button>
+            </div>
+
+            {loading ? (
+              <p className="text-muted-foreground">Загрузка...</p>
+            ) : dispatchers.length === 0 ? (
+              <p className="text-muted-foreground">Нет диспетчеров</p>
+            ) : (
+              <div className="card-base overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Логин</TableHead>
+                      <TableHead>Имя диспетчера</TableHead>
+                      <TableHead>Пароль</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {dispatchers.map((dispatcher) => (
+                      <TableRow key={dispatcher.id}>
+                        <TableCell className="font-medium">{dispatcher.username}</TableCell>
+                        <TableCell>{dispatcher.name}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono">
+                              {showPassword[dispatcher.id!]
+                                ? (dispatcher as any).plainPassword || '••••••••'
+                                : '••••••••'}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => togglePasswordVisibility(dispatcher.id!)}
+                            >
+                              {showPassword[dispatcher.id!] ? (
+                                <EyeOff className="h-4 w-4" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
+
+          {/* Archive Section */}
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Архив сессий</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Просмотр завершенных сессий. Завершенные сессии можно удалить из архива.
+            </p>
+
+            {loading ? (
+              <p className="text-muted-foreground">Загрузка...</p>
+            ) : sessions.length === 0 ? (
+              <p className="text-muted-foreground">Нет завершенных сессий</p>
+            ) : (
+              <div className="card-base overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Номер сессии</TableHead>
+                      <TableHead>Дата и время</TableHead>
+                      <TableHead>Дата создания</TableHead>
+                      <TableHead>Создатель</TableHead>
+                      <TableHead className="w-20"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sessions.map((session) => (
+                      <TableRow key={session.id}>
+                        <TableCell className="font-medium">
+                          <span className="font-mono text-lg font-bold text-primary">
+                            {session.sessionNumber
+                              ? String(session.sessionNumber).padStart(4, '0')
+                              : session.sessionCode || 'N/A'}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {session.date} {session.startTime || '00:00'} - {session.endTime || '—'}
+                        </TableCell>
+                        <TableCell>
+                          {session.createdAt
+                            ? new Date(session.createdAt).toLocaleDateString('ru-RU', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                              })
+                            : '—'}
+                        </TableCell>
+                        <TableCell>{session.createdByName || '—'}</TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteSession(session.id)}
+                            className="text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
         </div>
+      </div>
 
-        {/* Archive Section */}
-        <div className="card-base p-6">
-          <h2 className="text-xl font-semibold mb-4">Все сессии</h2>
-
-          {loading ? (
-            <p className="text-muted-foreground">Загрузка...</p>
-          ) : sessions.length === 0 ? (
-            <p className="text-muted-foreground">Сессий нет</p>
-          ) : (
-            <SessionsTable 
-              sessions={sessions}
-              participants={participants}
-              onUpdate={loadData}
-              onDelete={handleDeleteSession}
-              readOnly={false}
-              allowValidityToggle={false}
-              showCommentsSection={false}
-              showSessionDetails={true}
-            />
-          )}
-        </div>
-
-        {/* Create Dispatcher Dialog */}
-        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Создать диспетчера</DialogTitle>
-              <DialogDescription>
-                Создайте учетную запись диспетчера. Пароль будет показан после создания.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleCreateDispatcher} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Имя диспетчера</Label>
-                <Input
-                  id="name"
-                  value={newDispatcher.name}
-                  onChange={(e) => setNewDispatcher({ ...newDispatcher, name: e.target.value })}
-                  placeholder="Введите имя диспетчера"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="username">Логин</Label>
-                <Input
-                  id="username"
-                  value={newDispatcher.username}
-                  onChange={(e) => setNewDispatcher({ ...newDispatcher, username: e.target.value })}
-                  placeholder="Введите имя пользователя (мин. 3 символа)"
-                  required
-                  minLength={3}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Пароль</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={newDispatcher.password}
-                  onChange={(e) => setNewDispatcher({ ...newDispatcher, password: e.target.value })}
-                  placeholder="Введите пароль (мин. 6 символов)"
-                  required
-                  minLength={6}
-                />
-              </div>
-              {error && <p className="text-sm text-destructive">{error}</p>}
-              <div className="flex gap-3">
-                <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)} className="flex-1">
-                  Отмена
-                </Button>
-                <Button type="submit" className="flex-1">
-                  Создать
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </main>
+      {/* Create Dispatcher Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Создать диспетчера</DialogTitle>
+            <DialogDescription>
+              Создайте новую учетную запись диспетчера. Пароль будет показан после создания.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateDispatcher} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Имя диспетчера</Label>
+              <Input
+                id="name"
+                value={newDispatcher.name}
+                onChange={(e) => setNewDispatcher({ ...newDispatcher, name: e.target.value })}
+                placeholder="Введите имя диспетчера"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="username">Логин</Label>
+              <Input
+                id="username"
+                value={newDispatcher.username}
+                onChange={(e) => setNewDispatcher({ ...newDispatcher, username: e.target.value })}
+                placeholder="Введите логин"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Пароль</Label>
+              <Input
+                id="password"
+                type="password"
+                value={newDispatcher.password}
+                onChange={(e) => setNewDispatcher({ ...newDispatcher, password: e.target.value })}
+                placeholder="Минимум 6 символов"
+                required
+                minLength={6}
+              />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)} className="flex-1">
+                Отмена
+              </Button>
+              <Button type="submit" className="flex-1">
+                Создать
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

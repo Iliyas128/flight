@@ -1,47 +1,58 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Session, FilterType } from '@/types';
-import { sessionsApi } from '@/lib/api';
+import { Link, useNavigate } from 'react-router-dom';
+import { Session } from '@/types';
+import { sessionsApi, validKeysApi } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
-import { SessionCard } from '@/components/SessionCard';
-import { FilterTabs } from '@/components/FilterTabs';
 import { LoginModal } from '@/components/LoginModal';
-import { Plane, Settings, Shield } from 'lucide-react';
+import { ValidKeysModal } from '@/components/ValidKeysModal';
+import { CheckKeyModal } from '@/components/CheckKeyModal';
+import { CreateSessionForm } from '@/components/CreateSessionForm';
+import { Plane, Shield, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const Index = () => {
-  const { user, isDispatcher, isAdmin } = useAuth();
+  const { user, isDispatcher, isAdmin, logout } = useAuth();
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [filter, setFilter] = useState<FilterType>('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [participantCounts, setParticipantCounts] = useState<Record<string, number>>({});
+  const [validKeysCounts, setValidKeysCounts] = useState<Record<string, number>>({});
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [showValidKeysModal, setShowValidKeysModal] = useState(false);
+  const [showCheckKeyModal, setShowCheckKeyModal] = useState(false);
 
   const loadSessions = async () => {
     try {
       setError(null);
       const upcoming = await sessionsApi.getUpcoming();
-    upcoming.sort((a, b) => {
-        const dateA = new Date(`${a.date}T${a.startTime || '00:00'}`);
-        const dateB = new Date(`${b.date}T${b.startTime || '00:00'}`);
-      return dateA.getTime() - dateB.getTime();
-    });
-    setSessions(upcoming);
+      // Sort by creation date (oldest first) to maintain consistent session numbers
+      upcoming.sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateA - dateB;
+      });
+      setSessions(upcoming);
 
-      // Load participant counts for each session
-      const counts: Record<string, number> = {};
+      // Load valid keys counts for each session
+      const keysCounts: Record<string, number> = {};
       await Promise.all(
         upcoming.map(async (session) => {
           try {
-            const participants = await sessionsApi.getParticipants(session.id);
-            counts[session.id] = participants.length;
+            const validKeys = await validKeysApi.getBySession(session.id);
+            keysCounts[session.id] = validKeys.count;
           } catch (err) {
-            counts[session.id] = 0;
+            keysCounts[session.id] = 0;
           }
         })
       );
-      setParticipantCounts(counts);
+      setValidKeysCounts(keysCounts);
     } catch (err: any) {
       setError(err.message || 'Ошибка при загрузке сессий');
       console.error('Error loading sessions:', err);
@@ -57,62 +68,177 @@ const Index = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const filteredSessions = sessions.filter(session => {
-    if (filter === 'all') return true;
-    // "Открытые" включает и open, и closing (они все еще открыты для записи)
-    if (filter === 'open') return session.status === 'open' || session.status === 'closing';
-    if (filter === 'closing') return session.status === 'closing';
-    if (filter === 'upcoming') return session.status === 'upcoming';
-    return true;
-  });
+  // Listen for messages from bot window when key is saved
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // Handle both message formats from bot
+      if (event.data === 'bot-key-saved' || event.data?.type === 'KEY_SAVED') {
+        // Reload sessions to update key counts
+        loadSessions();
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
 
-  const counts = {
-    all: sessions.length,
-    open: sessions.filter(s => s.status === 'open' || s.status === 'closing').length,
-    closing: sessions.filter(s => s.status === 'closing').length,
-    upcoming: sessions.filter(s => s.status === 'upcoming').length
+  const selectedSession = selectedSessionId ? sessions.find(s => s.id === selectedSessionId) : null;
+  const hasSelection = selectedSessionId !== null;
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  };
+
+  const formatTime = (timeStr: string) => {
+    return timeStr || '—';
+  };
+
+  const formatCreatedDate = (dateStr?: string) => {
+    if (!dateStr) return '—';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  };
+
+  const formatCreatedTime = (dateStr?: string) => {
+    if (!dateStr) return '—';
+    const date = new Date(dateStr);
+    return date.toLocaleTimeString('ru-RU', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const calculateDuration = (startTime: string, endTime?: string) => {
+    if (!endTime) return '—';
+    const start = startTime.split(':').map(Number);
+    const end = endTime.split(':').map(Number);
+    const startMinutes = start[0] * 60 + start[1];
+    const endMinutes = end[0] * 60 + end[1];
+    const diffMinutes = endMinutes - startMinutes;
+    const hours = Math.floor(diffMinutes / 60);
+    const minutes = diffMinutes % 60;
+    return `${hours}ч ${minutes}м`;
+  };
+
+  const handleGenerateKey = () => {
+    if (!selectedSession) return;
+    
+    // Use sessionNumber from backend if available, otherwise use index-based number
+    const sessionIndex = sessions.findIndex(s => s.id === selectedSession.id);
+    const sessionNumber = selectedSession.sessionNumber 
+      ? String(selectedSession.sessionNumber).padStart(4, '0')
+      : String(sessionIndex + 1).padStart(4, '0');
+    const duration = calculateDuration(selectedSession.startTime || '00:00', selectedSession.endTime);
+    const keysCount = validKeysCounts[selectedSession.id] || 0;
+    
+    // Build URL for bot site
+    const botUrl = import.meta.env.VITE_BOT_SITE_URL || 'http://localhost:8081';
+    const params = new URLSearchParams({
+      sessionNumber,
+      date: selectedSession.date,
+      startTime: selectedSession.startTime || '',
+      duration,
+      dispatcher: selectedSession.createdByName || '—',
+      keysCount: String(keysCount),
+      validKeys: '', // Will be fetched by bot if needed
+      sessionId: selectedSession.id, // Pass session ID for saving
+    });
+    
+    window.open(`${botUrl}?${params.toString()}`, '_blank');
   };
 
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border bg-card sticky top-0 z-20">
-        <div className="page-container py-3 sm:py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Plane className="h-5 w-5 text-primary" />
-            <span className="font-semibold text-foreground">Запись на сессии</span>
-          </div>
-          <div className="flex items-center gap-2 sm:gap-3">
-            {user ? (
-              <>
-                <span className="text-sm text-muted-foreground hidden sm:inline">{user.name}</span>
-                {isDispatcher && (
-                  <Link 
-                    to="/dispatcher"
-                    className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition-colors"
-                  >
-                    <Settings className="h-4 w-4" />
-                    <span className="hidden sm:inline">Диспетчер</span>
-                  </Link>
-                )}
-                {isAdmin && (
-                  <Link 
-                    to="/admin"
-                    className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition-colors"
-                  >
-                    <Shield className="h-4 w-4" />
-                    <span className="hidden sm:inline">Админ</span>
-                  </Link>
-                )}
-              </>
-            ) : (
-              <button
-                onClick={() => setShowLoginModal(true)}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+        <div className="page-container py-3 sm:py-4">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Plane className="h-5 w-5 text-primary" />
+              
+              {/* Green buttons - available to all users, become green when row is selected */}
+              <Button
+                variant="outline"
+                size="sm"
+                className={hasSelection ? 'bg-emerald-500 text-white hover:bg-emerald-600 border-emerald-500' : 'bg-white border-gray-300 text-gray-700'}
+                disabled={!hasSelection}
+                onClick={handleGenerateKey}
               >
-                Аноним
-              </button>
-            )}
+                Генерировать ключ
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className={hasSelection ? 'bg-emerald-500 text-white hover:bg-emerald-600 border-emerald-500' : 'bg-white border-gray-300 text-gray-700'}
+                disabled={!hasSelection}
+                onClick={() => setShowCheckKeyModal(true)}
+              >
+                Проверить ключ
+              </Button>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              {/* Blue buttons - only for dispatcher (not admin), next to user name */}
+              {isDispatcher && !isAdmin && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-sky-500 text-white hover:bg-sky-600 border-sky-500"
+                    disabled={!hasSelection}
+                    onClick={() => setShowValidKeysModal(true)}
+                  >
+                    Валидные ключи
+                  </Button>
+                  <CreateSessionForm onSuccess={loadSessions} />
+                </>
+              )}
+
+              {/* User name button or Anonymous */}
+              {user ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="bg-sky-500 text-white hover:bg-sky-600 border-sky-500"
+                    >
+                      {user.name}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {isAdmin && (
+                      <DropdownMenuItem asChild>
+                        <Link to="/admin">Панель администратора</Link>
+                      </DropdownMenuItem>
+                    )}
+                    {isAdmin && <DropdownMenuSeparator />}
+                    <DropdownMenuItem onClick={() => {
+                      logout();
+                      window.location.href = '/';
+                    }}>
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Выйти
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <button
+                  onClick={() => setShowLoginModal(true)}
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer px-2"
+                >
+                  Аноним
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -121,21 +247,7 @@ const Index = () => {
 
       {/* Main content */}
       <main className="page-container">
-        <div className="mb-6">
-          <h1 className="page-title mb-1">Предстоящие сессии</h1>
-          <p className="text-sm text-muted-foreground">
-            Выберите сессию для записи
-          </p>
-        </div>
-
-        <div className="mb-4">
-          <FilterTabs 
-            activeFilter={filter} 
-            onChange={setFilter}
-            counts={counts}
-          />
-        </div>
-
+        {/* Sessions Table */}
         {loading ? (
           <div className="card-base p-8 text-center">
             <p className="text-muted-foreground">Загрузка...</p>
@@ -147,26 +259,77 @@ const Index = () => {
               Попробовать снова
             </button>
           </div>
-        ) : filteredSessions.length > 0 ? (
-          <div className="space-y-3">
-            {filteredSessions.map(session => (
-              <SessionCard
-                key={session.id}
-                session={session}
-                participantCount={participantCounts[session.id] || 0}
-                onRegistrationComplete={loadSessions}
-              />
-            ))}
-          </div>
         ) : (
-          <div className="card-base p-8 text-center">
-            <p className="text-muted-foreground">
-              {filter === 'all' && 'Нет предстоящих сессий'}
-              {filter === 'open' && 'Нет сессий со статусом "Открыта"'}
-              {filter === 'closing' && 'Нет сессий со статусом "Скоро закрывается"'}
-              {filter === 'upcoming' && 'Нет сессий, которые скоро откроются'}
-            </p>
+          <div className="card-base border border-gray-300 rounded-lg overflow-hidden bg-white">
+            {/* Table Headers */}
+            <div className="bg-white border-b border-gray-300">
+              <div className="grid grid-cols-8 gap-4 px-4 py-2 text-sm font-medium text-gray-700">
+                <div className="text-start">No</div>
+                <div className="text-start">Дата начала</div>
+                <div className="text-start">Время начала</div>
+                <div className="text-start">Длит.</div>
+                <div className="text-start">Ключей</div>
+                <div className="text-start">Диспетчер</div>
+                <div className="text-start">Дата создания</div>
+                <div className="text-start">Время создания</div>
+              </div>
+            </div>
+            
+            {/* Table Body with Scrollbar */}
+            <div className="overflow-x-auto max-h-[calc(100vh-400px)] overflow-y-auto">
+              {sessions.length > 0 ? (
+                <div className="min-w-full">
+                    {sessions.map((session, index) => {
+                      const isSelected = selectedSessionId === session.id;
+                      // Use sessionNumber from backend if available, otherwise use index-based number
+                      const sessionNumber = session.sessionNumber 
+                        ? String(session.sessionNumber).padStart(4, '0')
+                        : String(index + 1).padStart(4, '0');
+                      return (
+                      <div
+                        key={session.id}
+                        onClick={() => setSelectedSessionId(session.id)}
+                        className={`grid grid-cols-8 gap-4 px-4 py-3 border-b border-gray-200 cursor-pointer hover:bg-gray-50 ${
+                          isSelected ? 'bg-emerald-50 border-l-4 border-l-emerald-500' : ''
+                        }`}
+                      >
+                        <div className="text-start text-sm">{sessionNumber}</div>
+                        <div className="text-start text-sm">{formatDate(session.date)}</div>
+                        <div className="text-start text-sm">{formatTime(session.startTime || '—')}</div>
+                        <div className="text-start text-sm">{calculateDuration(session.startTime || '00:00', session.endTime)}</div>
+                        <div className="text-start text-sm">{validKeysCounts[session.id] || 0}</div>
+                        <div className="text-start text-sm">{session.createdByName || '—'}</div>
+                        <div className="text-start text-sm">{formatCreatedDate(session.createdAt)}</div>
+                        <div className="text-start text-sm">{formatCreatedTime(session.createdAt)}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="p-8 text-center text-muted-foreground">
+                  Нет предстоящих сессий
+                </div>
+              )}
+            </div>
           </div>
+        )}
+
+        {/* Valid Keys Modal */}
+        {selectedSession && (
+          <ValidKeysModal
+            isOpen={showValidKeysModal}
+            onClose={() => setShowValidKeysModal(false)}
+            sessionId={selectedSession.id}
+          />
+        )}
+
+        {/* Check Key Modal */}
+        {selectedSession && (
+          <CheckKeyModal
+            isOpen={showCheckKeyModal}
+            onClose={() => setShowCheckKeyModal(false)}
+            sessionId={selectedSession.id}
+          />
         )}
       </main>
     </div>

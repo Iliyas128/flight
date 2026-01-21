@@ -108,7 +108,6 @@ export function CreateSessionForm({ onSuccess }: CreateSessionFormProps) {
       }
 
       // Debug: log the data being sent
-      console.log('Creating session with data:', sessionData);
 
       await sessionsApi.create(sessionData);
 
@@ -152,7 +151,7 @@ export function CreateSessionForm({ onSuccess }: CreateSessionFormProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => open ? setIsOpen(true) : handleClose()}>
       <DialogTrigger asChild>
-        <Button className="flex items-center gap-2">
+        <Button className="flex items-center gap-2 bg-sky-500 text-white hover:bg-sky-600 border-sky-500" variant="outline" size="sm">
           <Plus className="h-4 w-4" />
           Создать сессию
         </Button>

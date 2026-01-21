@@ -55,6 +55,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const response = await authApi.login(username, password);
     localStorage.setItem('token', response.token);
     setUser(response.user);
+    return response; // Return response for redirect logic
   };
 
   const register = async (username: string, password: string, name: string) => {

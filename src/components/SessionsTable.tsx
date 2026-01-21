@@ -1,4 +1,4 @@
-import { useState, Fragment } from 'react';
+import { useState, Fragment, useEffect } from 'react';
 import { Session, Participant } from '@/types';
 import { StatusBadge } from './StatusBadge';
 import { formatDateTime, formatDate } from '@/lib/utils';
@@ -37,17 +37,36 @@ export function SessionsTable({
   const canToggleValidity = allowValidityToggle ?? !readOnly;
   const canShowComments = showCommentsSection ?? !readOnly;
 
+  // Debug: log participants on mount/update
+  useEffect(() => {
+    console.log('SessionsTable received participants:', participants.length);
+    console.log('SessionsTable received sessions:', sessions.length);
+    if (participants.length > 0) {
+      console.log('Sample participant:', participants[0]);
+    }
+  }, [participants, sessions]);
+
   const getParticipantCount = (sessionId: string) => {
-    return participants.filter(p => p.sessionId === sessionId).length;
+    const filtered = participants.filter(p => p.sessionId === sessionId);
+    // Debug: log participant count
+    if (filtered.length > 0) {
+      console.log(`Session ${sessionId} has ${filtered.length} participants`);
+    }
+    return filtered.length;
   };
 
   const getSessionParticipants = (sessionId: string) => {
-    return participants.filter(p => p.sessionId === sessionId);
+    const filtered = participants.filter(p => p.sessionId === sessionId);
+    // Debug: log participants
+    if (filtered.length > 0) {
+      console.log(`Session ${sessionId} participants:`, filtered);
+    }
+    return filtered;
   };
 
   const handleDelete = async (id: string) => {
     try {
-      setDeleteConfirm(null);
+    setDeleteConfirm(null);
       if (onDelete) {
         onDelete(id);
         return;
@@ -69,8 +88,8 @@ export function SessionsTable({
     }
     try {
       await participantsApi.update(participantId, { isValid: newValidity });
-      // Update data
-      onUpdate?.();
+    // Update data
+    onUpdate?.();
     } catch (err) {
       console.error('Error updating participant validity:', err);
     }
@@ -89,10 +108,10 @@ export function SessionsTable({
   const handleSaveComments = async (sessionId: string) => {
     try {
       await sessionsApi.update(sessionId, { comments: commentsValue });
-      setEditingComments(null);
-      setCommentsValue('');
-      // Update data to reflect changes
-      onUpdate?.();
+    setEditingComments(null);
+    setCommentsValue('');
+    // Update data to reflect changes
+    onUpdate?.();
     } catch (err) {
       console.error('Error updating session comments:', err);
     }
@@ -113,7 +132,7 @@ export function SessionsTable({
           <table className="w-full">
             <thead>
               <tr className="border-b border-border">
-                <th className="table-header table-cell">Код сессии</th>
+                <th className="table-header table-cell">Номер сессии</th>
                 <th className="table-header table-cell hidden sm:table-cell">Дата и время</th>
                 {/* Дата и время создания видна как диспетчеру, так и в архиве */}
                 <th className="table-header table-cell hidden sm:table-cell">
@@ -135,13 +154,18 @@ export function SessionsTable({
                 const isExpanded = expandedSessions.has(session.id);
                 const sessionParticipants = getSessionParticipants(session.id);
                 
+                // Debug: log participants for admin
+                if (isExpanded) {
+                  console.log(`Session ${session.id} expanded - count: ${count}, participants: ${sessionParticipants.length}`, sessionParticipants);
+                }
+                
                 return (
                   <Fragment key={session.id}>
                     <tr className="even:bg-slate-50 hover:bg-slate-50/80">
                       <td className="table-cell font-medium">
                         <div>
                           <span className="font-mono text-lg font-bold text-primary">
-                            {session.sessionCode || 'N/A'}
+                            {session.sessionNumber ? String(session.sessionNumber).padStart(4, '0') : (session.sessionCode || 'N/A')}
                           </span>
                           <span className="block sm:hidden text-xs text-muted-foreground mt-0.5">
                             {formatDateTime(session.date, session.startTime || (session as any).time || '00:00', session.endTime)}
@@ -203,7 +227,6 @@ export function SessionsTable({
                               return newSet;
                             });
                           }}
-                          disabled={count === 0}
                         >
                           <Users className="h-4 w-4" />
                           {count}
@@ -227,7 +250,7 @@ export function SessionsTable({
                     </tr>
                     {isExpanded && (
                       <tr key={`${session.id}-expanded`}>
-                        <td colSpan={readOnly ? 6 : 6} className="p-0">
+                        <td colSpan={readOnly ? 6 : 7} className="p-0">
                           <div className="bg-slate-50 px-4 py-4 space-y-4">
                             {/* Session Details Section - только для админа */}
                             {showSessionDetails && (
@@ -237,8 +260,10 @@ export function SessionsTable({
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
                                   <div>
-                                    <span className="text-muted-foreground">Код сессии:</span>
-                                    <span className="ml-2 font-mono font-bold text-primary">{session.sessionCode}</span>
+                                    <span className="text-muted-foreground">Номер сессии:</span>
+                                    <span className="ml-2 font-mono font-bold text-primary">
+                                      {session.sessionNumber ? String(session.sessionNumber).padStart(4, '0') : session.sessionCode}
+                                    </span>
                                   </div>
                                   <div>
                                     <span className="text-muted-foreground">Дата:</span>
@@ -311,6 +336,68 @@ export function SessionsTable({
                               </div>
                             )}
 
+                            {/* Participants Table - Always show */}
+                            <div>
+                              <div className="text-sm font-medium text-muted-foreground mb-2">
+                                Участники ({count}):
+                              </div>
+                              {sessionParticipants.length > 0 ? (
+                                <div className="bg-white rounded border border-border overflow-hidden">
+                                  <table className="w-full text-sm">
+                                    <thead className="bg-slate-100">
+                                      <tr>
+                                        <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">Имя</th>
+                                        <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">Код валидности</th>
+                                        {canToggleValidity && (
+                                          <th className="px-3 py-2 text-center text-xs font-medium text-muted-foreground w-24">Валидность</th>
+                                        )}
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border">
+                                      {sessionParticipants.map((p) => {
+                                        const getValidityColor = () => {
+                                          if (p.isValid === true) return 'text-emerald-600 bg-emerald-50 border-emerald-200';
+                                          if (p.isValid === false) return 'text-red-600 bg-red-50 border-red-200';
+                                          return 'text-slate-600 bg-slate-50 border-slate-200';
+                                        };
+
+                                        const getValidityIcon = () => {
+                                          if (p.isValid === true) return <CheckCircle2 className="h-4 w-4" />;
+                                          if (p.isValid === false) return <XCircle className="h-4 w-4" />;
+                                          return null;
+                                        };
+
+                                        return (
+                                          <tr key={p.id} className="hover:bg-slate-50/50">
+                                            <td className="px-3 py-2">{p.name}</td>
+                                            <td className="px-3 py-2">
+                                              <span className="font-mono">{p.validationCode}</span>
+                                            </td>
+                                            {canToggleValidity && (
+                                              <td className="px-3 py-2 text-center">
+                                                <Button
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  onClick={() => handleToggleValidity(p.id, p.isValid)}
+                                                  className={`h-8 w-8 p-0 ${getValidityColor()}`}
+                                                >
+                                                  {getValidityIcon()}
+                                                </Button>
+                                              </td>
+                                            )}
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              ) : (
+                                <div className="bg-white rounded border border-border p-4 text-center text-sm text-muted-foreground">
+                                  Нет участников
+                                </div>
+                              )}
+                            </div>
+
                             {/* Comments Section */}
                             {canShowComments && (
                               <div>
@@ -363,64 +450,6 @@ export function SessionsTable({
                                     )}
                                   </div>
                                 )}
-                              </div>
-                            )}
-
-                            {/* Participants Table */}
-                            {count > 0 && (
-                              <div>
-                                <div className="text-sm font-medium text-muted-foreground mb-2">
-                                  Участники ({count}):
-                                </div>
-                                <div className="bg-white rounded border border-border overflow-hidden">
-                                  <table className="w-full text-sm">
-                                    <thead className="bg-slate-100">
-                                      <tr>
-                                        <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">Имя</th>
-                                        <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">Код валидности</th>
-                                        {canToggleValidity && (
-                                          <th className="px-3 py-2 text-center text-xs font-medium text-muted-foreground w-24">Валидность</th>
-                                        )}
-                                      </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-border">
-                                      {sessionParticipants.map((p) => {
-                                        const getValidityColor = () => {
-                                          if (p.isValid === true) return 'text-emerald-600 bg-emerald-50 border-emerald-200';
-                                          if (p.isValid === false) return 'text-red-600 bg-red-50 border-red-200';
-                                          return 'text-slate-600 bg-slate-50 border-slate-200';
-                                        };
-
-                                        const getValidityIcon = () => {
-                                          if (p.isValid === true) return <CheckCircle2 className="h-4 w-4" />;
-                                          if (p.isValid === false) return <XCircle className="h-4 w-4" />;
-                                          return null;
-                                        };
-
-                                        return (
-                                          <tr key={p.id} className="hover:bg-slate-50/50">
-                                            <td className="px-3 py-2">{p.name}</td>
-                                            <td className="px-3 py-2">
-                                              <span className="font-mono">{p.validationCode}</span>
-                                            </td>
-                                            {canToggleValidity && (
-                                              <td className="px-3 py-2 text-center">
-                                                <Button
-                                                  variant="ghost"
-                                                  size="sm"
-                                                  onClick={() => handleToggleValidity(p.id, p.isValid)}
-                                                  className={`h-8 w-8 p-0 ${getValidityColor()}`}
-                                                >
-                                                  {getValidityIcon()}
-                                                </Button>
-                                              </td>
-                                            )}
-                                          </tr>
-                                        );
-                                      })}
-                                    </tbody>
-                                  </table>
-                                </div>
                               </div>
                             )}
                           </div>
