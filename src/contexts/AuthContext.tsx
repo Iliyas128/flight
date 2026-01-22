@@ -5,8 +5,8 @@ import { authApi } from '@/lib/api';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (username: string, password: string) => Promise<void>;
-  register: (username: string, password: string, name: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<{ token: string; user: User }>;
+  register: (username: string, password: string, name: string) => Promise<{ token: string; user: User }>;
   logout: () => void;
   isAuthenticated: boolean;
   isDispatcher: boolean;
@@ -51,17 +51,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   }, []);
 
-  const login = async (username: string, password: string) => {
+  const login = async (username: string, password: string): Promise<{ token: string; user: User }> => {
     const response = await authApi.login(username, password);
     localStorage.setItem('token', response.token);
     setUser(response.user);
     return response; // Return response for redirect logic
   };
 
-  const register = async (username: string, password: string, name: string) => {
+  const register = async (username: string, password: string, name: string): Promise<{ token: string; user: User }> => {
     const response = await authApi.register(username, password, name);
     localStorage.setItem('token', response.token);
     setUser(response.user);
+    return response;
   };
 
   const logout = () => {

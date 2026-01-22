@@ -17,6 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { StatusBadge } from '@/components/StatusBadge';
 
 const Admin = () => {
   const { isAdmin, user, logout } = useAuth();
@@ -44,7 +45,7 @@ const Admin = () => {
       setLoading(true);
       const [dispatchersData, sessionsData] = await Promise.all([
         authApi.getDispatchers(),
-        sessionsApi.getCompleted(), // Only completed sessions for archive
+        sessionsApi.getAll(), // Все сессии (активные + архив)
       ]);
       setDispatchers(dispatchersData);
       setSessions(sessionsData);
@@ -108,6 +109,15 @@ const Admin = () => {
       ...prev,
       [dispatcherId]: !prev[dispatcherId],
     }));
+  };
+
+  const calculateDuration = (startTime?: string, endTime?: string) => {
+    if (!startTime || !endTime) return '—';
+    const [sh, sm] = startTime.split(':').map(Number);
+    const [eh, em] = endTime.split(':').map(Number);
+    const diff = (eh * 60 + em) - (sh * 60 + sm);
+    if (diff <= 0) return '—';
+    return `${diff} мин`;
   };
 
   if (!isAdmin) {
@@ -286,9 +296,11 @@ const Admin = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Номер сессии</TableHead>
-                      <TableHead>Дата и время</TableHead>
+                      <TableHead>Время</TableHead>
+                      <TableHead>Время полёта</TableHead>
                       <TableHead>Дата создания</TableHead>
                       <TableHead>Создатель</TableHead>
+                      <TableHead>Статус</TableHead>
                       <TableHead className="w-20"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -303,7 +315,10 @@ const Admin = () => {
                           </span>
                         </TableCell>
                         <TableCell>
-                          {session.date} {session.startTime || '00:00'} - {session.endTime || '—'}
+                          {session.startTime || '—'} {session.endTime ? `- ${session.endTime}` : ''}
+                        </TableCell>
+                        <TableCell>
+                          {calculateDuration(session.startTime, session.endTime)}
                         </TableCell>
                         <TableCell>
                           {session.createdAt
@@ -315,6 +330,9 @@ const Admin = () => {
                             : '—'}
                         </TableCell>
                         <TableCell>{session.createdByName || '—'}</TableCell>
+                        <TableCell>
+                          <StatusBadge status={session.status} />
+                        </TableCell>
                         <TableCell>
                           <Button
                             variant="ghost"
@@ -367,15 +385,30 @@ const Admin = () => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Пароль</Label>
-              <Input
-                id="password"
-                type="password"
-                value={newDispatcher.password}
-                onChange={(e) => setNewDispatcher({ ...newDispatcher, password: e.target.value })}
-                placeholder="Минимум 6 символов"
-                required
-                minLength={6}
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword.create ? 'text' : 'password'}
+                  value={newDispatcher.password}
+                  onChange={(e) => setNewDispatcher({ ...newDispatcher, password: e.target.value })}
+                  placeholder="Минимум 6 символов"
+                  required
+                  minLength={6}
+                  className="pr-10"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground hover:text-foreground"
+                  onClick={() =>
+                    setShowPassword((prev) => ({ ...prev, create: !prev.create }))
+                  }
+                  aria-label={showPassword.create ? 'Скрыть пароль' : 'Показать пароль'}
+                >
+                  {showPassword.create ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
             </div>
             <div className="flex gap-3 pt-2">
               <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)} className="flex-1">

@@ -74,9 +74,7 @@ export function ValidKeysModal({ isOpen, onClose, sessionId }: ValidKeysModalPro
     const startMinutes = start[0] * 60 + start[1];
     const endMinutes = end[0] * 60 + end[1];
     const diffMinutes = endMinutes - startMinutes;
-    const hours = Math.floor(diffMinutes / 60);
-    const minutes = diffMinutes % 60;
-    return `${hours}ч ${minutes}м`;
+    return `${diffMinutes} мин`;
   };
 
   const formatCreatedDate = (dateStr?: string) => {

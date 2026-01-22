@@ -32,18 +32,27 @@ const Index = () => {
     try {
       setError(null);
       const upcoming = await sessionsApi.getUpcoming();
+
+      const now = new Date();
+
+      // Keep only sessions that have not started yet (local time check)
+      const notStarted = upcoming.filter((session) => {
+        const start = new Date(`${session.date}T${session.startTime || '00:00'}`);
+        return start.getTime() > now.getTime();
+      });
+
       // Sort by creation date (oldest first) to maintain consistent session numbers
-      upcoming.sort((a, b) => {
+      notStarted.sort((a, b) => {
         const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
         const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
         return dateA - dateB;
       });
-      setSessions(upcoming);
+      setSessions(notStarted);
 
       // Load valid keys counts for each session
       const keysCounts: Record<string, number> = {};
       await Promise.all(
-        upcoming.map(async (session) => {
+        notStarted.map(async (session) => {
           try {
             const validKeys = await validKeysApi.getBySession(session.id);
             keysCounts[session.id] = validKeys.count;
@@ -53,6 +62,9 @@ const Index = () => {
         })
       );
       setValidKeysCounts(keysCounts);
+
+      // Drop selection if it no longer exists (session ушла из списка)
+      setSelectedSessionId((prev) => (prev && notStarted.some((s) => s.id === prev) ? prev : null));
     } catch (err: any) {
       setError(err.message || 'Ошибка при загрузке сессий');
       console.error('Error loading sessions:', err);
@@ -63,8 +75,8 @@ const Index = () => {
 
   useEffect(() => {
     loadSessions();
-    // Refresh every minute to update statuses
-    const interval = setInterval(loadSessions, 60000);
+    // Refresh more often to react to start times approaching
+    const interval = setInterval(loadSessions, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -123,9 +135,7 @@ const Index = () => {
     const startMinutes = start[0] * 60 + start[1];
     const endMinutes = end[0] * 60 + end[1];
     const diffMinutes = endMinutes - startMinutes;
-    const hours = Math.floor(diffMinutes / 60);
-    const minutes = diffMinutes % 60;
-    return `${hours}ч ${minutes}м`;
+    return `${diffMinutes} мин`;
   };
 
   const handleGenerateKey = () => {
