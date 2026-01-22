@@ -408,7 +408,7 @@ const Admin = () => {
                   placeholder="Минимум 6 символов"
                   required
                   minLength={6}
-                  className="pr-10"
+                  className="pr-10 no-reveal"
                 />
                 <Button
                   type="button"

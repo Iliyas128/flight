@@ -80,7 +80,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Введите пароль"
                 required
-                className="pr-10"
+                className="pr-10 no-reveal"
               />
               <Button
                 type="button"

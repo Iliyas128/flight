@@ -1,3 +1,11 @@
+/* Hide native password reveal/clear buttons (Edge/IE) when we use our own eye icon */
+.no-reveal::-ms-reveal,
+.no-reveal::-ms-clear {
+  display: none;
+}
+.no-reveal::-webkit-textfield-decoration-container {
+  display: none;
+}
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
