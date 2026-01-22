@@ -276,9 +276,6 @@ const Admin = () => {
           {/* Archive Section */}
           <div>
             <h2 className="text-xl font-semibold mb-4">Архив сессий</h2>
-            <p className="text-sm text-muted-foreground mb-4">
-              Просмотр завершенных сессий. Завершенные сессии можно удалить из архива.
-            </p>
 
             {loading ? (
               <p className="text-muted-foreground">Загрузка...</p>
@@ -299,49 +296,69 @@ const Admin = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sessions.map((session) => (
-                      <TableRow key={session.id}>
-                        <TableCell className="font-medium">
-                          <span className="font-mono text-lg font-bold text-primary">
-                            {session.sessionNumber
-                              ? String(session.sessionNumber).padStart(4, '0')
-                              : session.sessionCode || 'N/A'}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          {session.startTime || '—'} {session.endTime ? `- ${session.endTime}` : ''}
-                        </TableCell>
-                        <TableCell>
-                          {calculateDuration(session.startTime, session.endTime)}
-                        </TableCell>
-                        <TableCell>
-                          {session.createdAt
-                            ? `${new Date(session.createdAt).toLocaleString('ru-RU', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                                timeZone: 'UTC',
-                              })} UTC`
-                            : '—'}
-                        </TableCell>
-                        <TableCell>{session.createdByName || '—'}</TableCell>
-                        <TableCell>
-                          <StatusBadge status={session.status} />
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteSession(session.id)}
-                            className="text-muted-foreground hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {sessions.map((session) => {
+                      const startUtc = new Date(`${session.date}T${session.startTime || '00:00'}Z`).getTime();
+                      const endUtc = session.endTime
+                        ? new Date(`${session.date}T${session.endTime}Z`).getTime()
+                        : startUtc + 2 * 60 * 60 * 1000;
+                      const now = Date.now();
+                      const diffHours = (startUtc - now) / (1000 * 60 * 60);
+
+                      let rowColor = '';
+                      if (diffHours > 2) {
+                        rowColor = 'bg-blue-50';
+                      } else if (diffHours <= 2 && diffHours > 0) {
+                        rowColor = 'bg-yellow-50';
+                      } else if (now >= startUtc && now < endUtc) {
+                        rowColor = 'bg-emerald-50';
+                      } else if (now >= endUtc) {
+                        rowColor = 'bg-red-50';
+                      }
+
+                      return (
+                        <TableRow key={session.id} className={rowColor}>
+                          <TableCell className="font-medium">
+                            <span className="font-mono text-lg font-bold text-primary">
+                              {session.sessionNumber
+                                ? String(session.sessionNumber).padStart(4, '0')
+                                : session.sessionCode || 'N/A'}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            {session.startTime || '—'} {session.endTime ? `- ${session.endTime}` : ''}
+                          </TableCell>
+                          <TableCell>
+                            {calculateDuration(session.startTime, session.endTime)}
+                          </TableCell>
+                          <TableCell>
+                            {session.createdAt
+                              ? `${new Date(session.createdAt).toLocaleString('ru-RU', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  timeZone: 'UTC',
+                                })} UTC`
+                              : '—'}
+                          </TableCell>
+                          <TableCell>{session.createdByName || '—'}</TableCell>
+                          <TableCell>
+                            <StatusBadge status={session.status} />
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteSession(session.id)}
+                              className="text-muted-foreground hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
