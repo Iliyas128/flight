@@ -208,13 +208,7 @@ const Admin = () => {
 
       <div className="page-container py-6">
         <div className="space-y-8">
-          {/* Page Title */}
-          <div>
-            <h1 className="page-title mb-1">Панель администратора</h1>
-            <p className="text-sm text-muted-foreground">
-              Создание диспетчеров и управление архивом сессий
-            </p>
-          </div>
+          
 
           {/* Dispatchers Section */}
           <div>
@@ -298,7 +292,7 @@ const Admin = () => {
                       <TableHead>Номер сессии</TableHead>
                       <TableHead>Время</TableHead>
                       <TableHead>Время полёта</TableHead>
-                      <TableHead>Дата создания</TableHead>
+                      <TableHead>Дата создания (UTC)</TableHead>
                       <TableHead>Создатель</TableHead>
                       <TableHead>Статус</TableHead>
                       <TableHead className="w-20"></TableHead>
@@ -322,11 +316,14 @@ const Admin = () => {
                         </TableCell>
                         <TableCell>
                           {session.createdAt
-                            ? new Date(session.createdAt).toLocaleDateString('ru-RU', {
+                            ? `${new Date(session.createdAt).toLocaleString('ru-RU', {
                                 day: '2-digit',
                                 month: '2-digit',
                                 year: 'numeric',
-                              })
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                timeZone: 'UTC',
+                              })} UTC`
                             : '—'}
                         </TableCell>
                         <TableCell>{session.createdByName || '—'}</TableCell>

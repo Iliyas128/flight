@@ -33,26 +33,23 @@ const Index = () => {
       setError(null);
       const upcoming = await sessionsApi.getUpcoming();
 
-      const now = new Date();
-
-      // Keep only sessions that have not started yet (local time check)
-      const notStarted = upcoming.filter((session) => {
-        const start = new Date(`${session.date}T${session.startTime || '00:00'}`);
-        return start.getTime() > now.getTime();
-      });
+      // Показываем только те, что ещё доступны для регистрации (open/closing) — статус считается на бэке в UTC
+      const visible = upcoming.filter(
+        (session) => session.status === 'open' || session.status === 'closing'
+      );
 
       // Sort by creation date (oldest first) to maintain consistent session numbers
-      notStarted.sort((a, b) => {
-        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return dateA - dateB;
+      visible.sort((a, b) => {
+        const aStart = new Date(`${a.date}T${a.startTime || '00:00'}Z`).getTime();
+        const bStart = new Date(`${b.date}T${b.startTime || '00:00'}Z`).getTime();
+        return aStart - bStart;
       });
-      setSessions(notStarted);
+      setSessions(visible);
 
       // Load valid keys counts for each session
       const keysCounts: Record<string, number> = {};
       await Promise.all(
-        notStarted.map(async (session) => {
+        visible.map(async (session) => {
           try {
             const validKeys = await validKeysApi.getBySession(session.id);
             keysCounts[session.id] = validKeys.count;
@@ -64,7 +61,7 @@ const Index = () => {
       setValidKeysCounts(keysCounts);
 
       // Drop selection if it no longer exists (session ушла из списка)
-      setSelectedSessionId((prev) => (prev && notStarted.some((s) => s.id === prev) ? prev : null));
+      setSelectedSessionId((prev) => (prev && visible.some((s) => s.id === prev) ? prev : null));
     } catch (err: any) {
       setError(err.message || 'Ошибка при загрузке сессий');
       console.error('Error loading sessions:', err);
@@ -112,20 +109,22 @@ const Index = () => {
   const formatCreatedDate = (dateStr?: string) => {
     if (!dateStr) return '—';
     const date = new Date(dateStr);
-    return date.toLocaleDateString('ru-RU', {
+    return `${date.toLocaleDateString('ru-RU', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
-    });
+      timeZone: 'UTC',
+    })}`;
   };
 
   const formatCreatedTime = (dateStr?: string) => {
     if (!dateStr) return '—';
     const date = new Date(dateStr);
-    return date.toLocaleTimeString('ru-RU', {
+    return `${date.toLocaleTimeString('ru-RU', {
       hour: '2-digit',
       minute: '2-digit',
-    });
+      timeZone: 'UTC',
+    })}`;
   };
 
   const calculateDuration = (startTime: string, endTime?: string) => {
@@ -273,15 +272,15 @@ const Index = () => {
           <div className="card-base border border-gray-300 rounded-lg overflow-hidden bg-white">
             {/* Table Headers */}
             <div className="bg-white border-b border-gray-300">
-              <div className="grid grid-cols-8 gap-4 px-4 py-2 text-sm font-medium text-gray-700">
+              <div className="grid grid-cols-8 gap-1 px-6 py-2 text-sm font-medium text-gray-700">
                 <div className="text-start">No</div>
                 <div className="text-start">Дата начала</div>
                 <div className="text-start">Время начала</div>
                 <div className="text-start">Длит.</div>
                 <div className="text-start">Ключей</div>
                 <div className="text-start">Диспетчер</div>
-                <div className="text-start">Дата создания</div>
-                <div className="text-start">Время создания</div>
+                <div className="text-start">Дата создания (UTC)</div>
+                <div className="text-start">Время создания (UTC)</div>
               </div>
             </div>
             
@@ -291,16 +290,33 @@ const Index = () => {
                 <div className="min-w-full">
                     {sessions.map((session, index) => {
                       const isSelected = selectedSessionId === session.id;
-                      // Use sessionNumber from backend if available, otherwise use index-based number
                       const sessionNumber = session.sessionNumber 
                         ? String(session.sessionNumber).padStart(4, '0')
                         : String(index + 1).padStart(4, '0');
+
+                      // Цветовая логика по времени начала/окончания (UTC)
+                      const now = new Date();
+                      const startUtc = new Date(`${session.date}T${session.startTime || '00:00'}Z`).getTime();
+                      const endUtc = session.endTime
+                        ? new Date(`${session.date}T${session.endTime}Z`).getTime()
+                        : startUtc + 2 * 60 * 60 * 1000;
+                      const diffHours = (startUtc - now.getTime()) / (1000 * 60 * 60);
+
+                      let color = 'bg-blue-50 border-blue-200'; // default >2h
+                      if (diffHours <= 2 && diffHours > 0) {
+                        color = 'bg-yellow-50 border-yellow-200';
+                      } else if (now.getTime() >= startUtc && now.getTime() < endUtc) {
+                        color = 'bg-emerald-50 border-emerald-200';
+                      } else if (now.getTime() >= endUtc) {
+                        color = 'bg-red-50 border-red-200';
+                      }
+
                       return (
                       <div
                         key={session.id}
                         onClick={() => setSelectedSessionId(session.id)}
-                        className={`grid grid-cols-8 gap-4 px-4 py-3 border-b border-gray-200 cursor-pointer hover:bg-gray-50 ${
-                          isSelected ? 'bg-emerald-50 border-l-4 border-l-emerald-500' : ''
+                        className={`grid grid-cols-8 gap-4 px-4 py-3 border-b cursor-pointer hover:opacity-80 ${color} ${
+                          isSelected ? 'border-l-4 border-l-emerald-500' : 'border-gray-200'
                         }`}
                       >
                         <div className="text-start text-sm">{sessionNumber}</div>

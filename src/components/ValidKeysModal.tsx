@@ -56,15 +56,17 @@ export function ValidKeysModal({ isOpen, onClose, sessionId }: ValidKeysModalPro
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
+      timeZone: 'UTC',
     });
   };
 
   const formatTime = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleTimeString('ru-RU', {
+    return `${date.toLocaleTimeString('ru-RU', {
       hour: '2-digit',
       minute: '2-digit',
-    });
+      timeZone: 'UTC',
+    })} UTC`;
   };
 
   const calculateDuration = (startTime: string, endTime?: string) => {
@@ -79,7 +81,7 @@ export function ValidKeysModal({ isOpen, onClose, sessionId }: ValidKeysModalPro
 
   const formatCreatedDate = (dateStr?: string) => {
     if (!dateStr) return '—';
-    return formatDate(dateStr);
+    return `${formatDate(dateStr)} (UTC)`;
   };
 
   const formatCreatedTime = (dateStr?: string) => {
