@@ -283,21 +283,25 @@ const Index = () => {
       <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} />
 
       {/* Main content */}
-      <main className="page-container">
+      <main className="h-[calc(100vh-80px)]">
         {/* Sessions Table */}
         {loading ? (
-          <div className="card-base p-8 text-center">
-            <p className="text-muted-foreground">Загрузка...</p>
+          <div className="page-container h-full flex items-center justify-center">
+            <div className="card-base p-8 text-center">
+              <p className="text-muted-foreground">Загрузка...</p>
+            </div>
           </div>
         ) : error ? (
-          <div className="card-base p-8 text-center">
-            <p className="text-destructive">{error}</p>
-            <button onClick={loadSessions} className="mt-4 text-primary hover:underline">
-              Попробовать снова
-            </button>
+          <div className="page-container h-full flex items-center justify-center">
+            <div className="card-base p-8 text-center">
+              <p className="text-destructive">{error}</p>
+              <button onClick={loadSessions} className="mt-4 text-primary hover:underline">
+                Попробовать снова
+              </button>
+            </div>
           </div>
         ) : (
-          <div className="card-base border border-gray-300 rounded-lg overflow-hidden bg-white">
+          <div className="card-base border border-gray-300 rounded-lg overflow-hidden bg-white w-full h-full flex flex-col">
             {/* Table Headers */}
             <div className="bg-white border-b border-gray-300">
               <div className="grid grid-cols-8 gap-1 px-4 py-2 text-sm font-medium text-gray-700">
@@ -313,7 +317,7 @@ const Index = () => {
             </div>
             
             {/* Table Body with Scrollbar */}
-            <div className="overflow-x-auto max-h-[calc(100vh-400px)] overflow-y-auto">
+            <div className="overflow-x-auto overflow-y-auto flex-1">
               {sessions.length > 0 ? (
                 <div className="min-w-full">
                     {sessions.map((session, index) => {
@@ -351,23 +355,23 @@ const Index = () => {
           </div>
         )}
 
-        {/* Valid Keys Modal */}
-        {selectedSession && (
-          <ValidKeysModal
-            isOpen={showValidKeysModal}
-            onClose={() => setShowValidKeysModal(false)}
-            sessionId={selectedSession.id}
-          />
-        )}
+      {/* Valid Keys Modal */}
+      {selectedSession && (
+        <ValidKeysModal
+          isOpen={showValidKeysModal}
+          onClose={() => setShowValidKeysModal(false)}
+          sessionId={selectedSession.id}
+        />
+      )}
 
-        {/* Check Key Modal */}
-        {selectedSession && (
-          <CheckKeyModal
-            isOpen={showCheckKeyModal}
-            onClose={() => setShowCheckKeyModal(false)}
-            sessionId={selectedSession.id}
-          />
-        )}
+      {/* Check Key Modal */}
+      {selectedSession && (
+        <CheckKeyModal
+          isOpen={showCheckKeyModal}
+          onClose={() => setShowCheckKeyModal(false)}
+          sessionId={selectedSession.id}
+        />
+      )}
       </main>
     </div>
   );
