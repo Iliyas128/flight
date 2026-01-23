@@ -1,7 +1,7 @@
 import { useState, Fragment, useEffect } from 'react';
 import { Session, Participant } from '@/types';
 import { StatusBadge } from './StatusBadge';
-import { formatDateTime, formatDate } from '@/lib/utils';
+import { formatDateTime, formatDate, getSessionRowClasses } from '@/lib/utils';
 import { sessionsApi, participantsApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -159,9 +159,11 @@ export function SessionsTable({
                   console.log(`Session ${session.id} expanded - count: ${count}, participants: ${sessionParticipants.length}`, sessionParticipants);
                 }
                 
+                const rowClasses = getSessionRowClasses(session);
+
                 return (
                   <Fragment key={session.id}>
-                    <tr className="even:bg-slate-50 hover:bg-slate-50/80">
+                    <tr className={`${rowClasses} hover:opacity-95`}>
                       <td className="table-cell font-medium">
                         <div>
                           <span className="font-mono text-lg font-bold text-primary">

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { authApi, sessionsApi } from '@/lib/api';
+import { authApi, sessionsApi, validKeysApi } from '@/lib/api';
+import { getSessionRowClasses } from '@/lib/utils';
 import { User, Session } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +25,7 @@ const Admin = () => {
   const navigate = useNavigate();
   const [dispatchers, setDispatchers] = useState<User[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [validKeysCounts, setValidKeysCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showPassword, setShowPassword] = useState<Record<string, boolean>>({});
@@ -48,7 +50,26 @@ const Admin = () => {
         sessionsApi.getAll(), // Все сессии (активные + архив)
       ]);
       setDispatchers(dispatchersData);
+      // Sort newest first by sessionNumber or createdAt
+      sessionsData.sort((a, b) => {
+        if (typeof a.sessionNumber === 'number' && typeof b.sessionNumber === 'number') {
+          return b.sessionNumber - a.sessionNumber;
+        }
+        return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      });
       setSessions(sessionsData);
+
+      // Load valid keys counts for sessions
+      const keysCounts: Record<string, number> = {};
+      await Promise.all(sessionsData.map(async (s) => {
+        try {
+          const resp = await validKeysApi.getBySession(s.id);
+          keysCounts[s.id] = resp.count;
+        } catch (err) {
+          keysCounts[s.id] = 0;
+        }
+      }));
+      setValidKeysCounts(keysCounts);
     } catch (err: any) {
       console.error('Error loading admin data:', err);
       toast.error(err.message || 'Ошибка при загрузке данных');
@@ -91,14 +112,12 @@ const Admin = () => {
   };
 
   const handleDeleteSession = async (sessionId: string) => {
-    if (!confirm('Вы уверены, что хотите удалить эту сессию из архива?')) {
-      return;
-    }
-
+    if (!confirm('Вы уверены, что хотите удалить эту сессию из архива?')) return;
     try {
       await sessionsApi.delete(sessionId);
+      // remove from state without reloading to avoid jumping
+      setSessions(prev => prev.filter(s => s.id !== sessionId));
       toast.success('Сессия удалена из архива');
-      loadData();
     } catch (err: any) {
       toast.error(err.message || 'Ошибка при удалении сессии');
     }
@@ -282,85 +301,75 @@ const Admin = () => {
             ) : sessions.length === 0 ? (
               <p className="text-muted-foreground">Нет завершенных сессий</p>
             ) : (
-              <div className="card-base overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Номер сессии</TableHead>
-                      <TableHead>Время</TableHead>
-                      <TableHead>Время полёта</TableHead>
-                      <TableHead>Дата создания (UTC)</TableHead>
-                      <TableHead>Создатель</TableHead>
-                      <TableHead>Статус</TableHead>
-                      <TableHead className="w-20"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sessions.map((session) => {
-                      const startUtc = new Date(`${session.date}T${session.startTime || '00:00'}Z`).getTime();
-                      const endUtc = session.endTime
-                        ? new Date(`${session.date}T${session.endTime}Z`).getTime()
-                        : startUtc + 2 * 60 * 60 * 1000;
-                      const now = Date.now();
-                      const diffHours = (startUtc - now) / (1000 * 60 * 60);
+              <div className="card-base border border-gray-300 rounded-lg overflow-hidden bg-white w-full h-full flex flex-col">
+                <div className="bg-white border-b border-gray-300">
+                  <div className="grid grid-cols-8 gap-1 px-4 py-2 text-sm font-medium text-gray-700">
+                    <div className="text-start">No</div>
+                    <div className="text-start">Дата начала(UTC)</div>
+                    <div className="text-start">Время начала(UTC)</div>
+                    <div className="text-start">Длит.</div>
+                    <div className="text-start">Ключей</div>
+                    <div className="text-start">Диспетчер</div>
+                    <div className="text-start">Дата создания (UTC)</div>
+                    <div className="text-start">Время создания (UTC)</div>
+                  </div>
+                </div>
 
-                      let rowColor = '';
-                      if (diffHours > 2) {
-                        rowColor = 'bg-blue-50';
-                      } else if (diffHours <= 2 && diffHours > 0) {
-                        rowColor = 'bg-yellow-50';
-                      } else if (now >= startUtc && now < endUtc) {
-                        rowColor = 'bg-emerald-50';
-                      } else if (now >= endUtc) {
-                        rowColor = 'bg-red-50';
-                      }
+                <div className="overflow-x-auto overflow-y-auto flex-1">
+                  <div className="min-w-full">
+                    {sessions.map((session, index) => {
+                      const isSelected = false;
+                      const sessionNumber = session.sessionNumber ? String(session.sessionNumber).padStart(4, '0') : String(index + 1).padStart(4, '0');
+                      const rowClasses = getSessionRowClasses(session);
+
+                      const formatDate = (dateStr: string) => {
+                        const date = new Date(dateStr);
+                        return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                      };
+
+                      const formatTime = (timeStr?: string) => timeStr || '—';
+
+                      const formatCreatedDate = (dateStr?: string) => {
+                        if (!dateStr) return '—';
+                        const date = new Date(dateStr);
+                        return `${date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' })}`;
+                      };
+
+                      const formatCreatedTime = (dateStr?: string) => {
+                        if (!dateStr) return '—';
+                        const date = new Date(dateStr);
+                        return `${date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })}`;
+                      };
+
+                      const calculateDurationLocal = (startTime?: string, endTime?: string) => {
+                        if (!startTime || !endTime) return '—';
+                        const start = startTime.split(':').map(Number);
+                        const end = endTime.split(':').map(Number);
+                        let diff = (end[0]*60 + end[1]) - (start[0]*60 + start[1]);
+                        if (diff < 0) diff += 24*60;
+                        return `${diff} мин`;
+                      };
 
                       return (
-                        <TableRow key={session.id} className={rowColor}>
-                          <TableCell className="font-medium">
-                            <span className="font-mono text-lg font-bold text-primary">
-                              {session.sessionNumber
-                                ? String(session.sessionNumber).padStart(4, '0')
-                                : session.sessionCode || 'N/A'}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            {session.startTime || '—'} {session.endTime ? `- ${session.endTime}` : ''}
-                          </TableCell>
-                          <TableCell>
-                            {calculateDuration(session.startTime, session.endTime)}
-                          </TableCell>
-                          <TableCell>
-                            {session.createdAt
-                              ? `${new Date(session.createdAt).toLocaleString('ru-RU', {
-                                  day: '2-digit',
-                                  month: '2-digit',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                  timeZone: 'UTC',
-                                })} UTC`
-                              : '—'}
-                          </TableCell>
-                          <TableCell>{session.createdByName || '—'}</TableCell>
-                          <TableCell>
-                            <StatusBadge status={session.status} />
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDeleteSession(session.id)}
-                              className="text-muted-foreground hover:text-destructive"
-                            >
+                        <div key={session.id} className={`grid grid-cols-8 gap-4 px-4 py-3 border-b border-gray-200 ${rowClasses}`}>
+                          <div className="text-start text-sm">{sessionNumber}</div>
+                          <div className="text-start text-sm">{formatDate(session.date)}</div>
+                          <div className="text-start text-sm">{formatTime(session.startTime)}</div>
+                          <div className="text-start text-sm">{calculateDurationLocal(session.startTime, session.endTime)}</div>
+                          <div className="text-start text-sm">{validKeysCounts[session.id] || 0}</div>
+                          <div className="text-start text-sm">{session.createdByName || '—'}</div>
+                          <div className="text-start text-sm">{formatCreatedDate(session.createdAt)}</div>
+                          <div className="text-start text-sm flex items-center justify-between">
+                            <span>{formatCreatedTime(session.createdAt)}</span>
+                            <button onClick={() => handleDeleteSession(session.id)} className="ml-2 text-muted-foreground hover:text-destructive">
                               <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
+                            </button>
+                          </div>
+                        </div>
                       );
                     })}
-                  </TableBody>
-                </Table>
+                  </div>
+                </div>
               </div>
             )}
           </div>

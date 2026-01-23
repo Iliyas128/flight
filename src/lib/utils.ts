@@ -89,3 +89,26 @@ export function calculateSessionStatus(session: Session): SessionStatus {
   // Registration is still open (more than 30 minutes until closing)
   return 'open';
 }
+
+// Compute tailwind classes for a session row based on current UTC time
+export function getSessionRowClasses(session: Session): string {
+  const now = new Date();
+  const startTime = session.startTime || session.registrationStartTime || '00:00';
+  // Parse as UTC by appending Z
+  const start = new Date(`${session.date}T${startTime}Z`);
+  const end = session.endTime ? new Date(`${session.date}T${session.endTime}Z`) : new Date(start.getTime() + 2 * 60 * 60 * 1000);
+
+  // finished
+  if (now >= end) return 'bg-red-50 text-red-800';
+
+  // started but not finished
+  if (now >= start && now < end) return 'bg-emerald-50 text-emerald-800';
+
+  // starts within 2 hours
+  const twoHoursMs = 2 * 60 * 60 * 1000;
+  const msUntilStart = start.getTime() - now.getTime();
+  if (msUntilStart <= twoHoursMs) return 'bg-yellow-50 text-amber-800';
+
+  // starts later than 2 hours
+  return 'bg-sky-50 text-sky-800';
+}

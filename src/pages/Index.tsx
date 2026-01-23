@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Session } from '@/types';
 import { sessionsApi, validKeysApi } from '@/lib/api';
+import { getSessionRowClasses } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { LoginModal } from '@/components/LoginModal';
 import { ValidKeysModal } from '@/components/ValidKeysModal';
@@ -32,25 +33,24 @@ const Index = () => {
   const loadSessions = async () => {
     try {
       setError(null);
-      const upcoming = await sessionsApi.getUpcoming();
+      // Load all sessions (including closed/completed)
+      const all = await sessionsApi.getAll();
 
-      // Показываем только те, что ещё доступны для регистрации (open/closing) — статус считается на бэке в UTC
-      const visible = upcoming.filter(
-        (session) => session.status === 'open' || session.status === 'closing'
-      );
-
-      // Sort by creation date (oldest first) to maintain consistent session numbers
-      visible.sort((a, b) => {
-        const aStart = new Date(`${a.date}T${a.startTime || '00:00'}Z`).getTime();
-        const bStart = new Date(`${b.date}T${b.startTime || '00:00'}Z`).getTime();
-        return aStart - bStart;
+      // Sort by session number (descending) or by creation date (newest first)
+      all.sort((a, b) => {
+        if (typeof a.sessionNumber === 'number' && typeof b.sessionNumber === 'number') {
+          return b.sessionNumber - a.sessionNumber; // newest by number first
+        }
+        const da = new Date(a.createdAt || 0).getTime();
+        const db = new Date(b.createdAt || 0).getTime();
+        return db - da; // newest created first
       });
-      setSessions(visible);
+      setSessions(all);
 
       // Load valid keys counts for each session
       const keysCounts: Record<string, number> = {};
       await Promise.all(
-        visible.map(async (session) => {
+        all.map(async (session) => {
           try {
             const validKeys = await validKeysApi.getBySession(session.id);
             keysCounts[session.id] = validKeys.count;
@@ -62,7 +62,7 @@ const Index = () => {
       setValidKeysCounts(keysCounts);
 
       // Drop selection if it no longer exists (session ушла из списка)
-      setSelectedSessionId((prev) => (prev && visible.some((s) => s.id === prev) ? prev : null));
+      setSelectedSessionId((prev) => (prev && all.some((s) => s.id === prev) ? prev : null));
     } catch (err: any) {
       setError(err.message || 'Ошибка при загрузке сессий');
       console.error('Error loading sessions:', err);
@@ -163,6 +163,11 @@ const Index = () => {
 
   const handleGenerateKey = () => {
     if (!selectedSession) return;
+    if (selectedSession.status === 'closed' || selectedSession.status === 'completed') {
+      // Safety: do not allow generating keys for closed/completed sessions
+      alert('Нельзя генерировать ключи для закрытой или завершённой сессии.');
+      return;
+    }
     
     // Use sessionNumber from backend if available, otherwise use index-based number
     const sessionIndex = sessions.findIndex(s => s.id === selectedSession.id);
@@ -322,16 +327,21 @@ const Index = () => {
                 <div className="min-w-full">
                     {sessions.map((session, index) => {
                       const isSelected = selectedSessionId === session.id;
+                      const isDisabled = session.status === 'closed' || session.status === 'completed';
                       const sessionNumber = session.sessionNumber 
                         ? String(session.sessionNumber).padStart(4, '0')
                         : String(index + 1).padStart(4, '0');
+                      const rowClasses = getSessionRowClasses(session);
 
                       return (
                       <div
                         key={session.id}
-                        onClick={() => setSelectedSessionId(session.id)}
-                        className={`grid grid-cols-8 gap-4 px-4 py-3 border-b border-gray-200 cursor-pointer hover:bg-gray-50 ${
-                          isSelected ? 'bg-emerald-50 border-l-4 border-l-emerald-500' : ''
+                        onClick={() => {
+                          if (isDisabled) return; // cannot select closed/completed
+                          setSelectedSessionId(session.id);
+                        }}
+                        className={`grid grid-cols-8 gap-4 px-4 py-3 border-b border-gray-200 ${isDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-gray-50'} ${
+                          isSelected ? 'bg-emerald-50 border-l-4 border-l-emerald-500' : rowClasses
                         }`}
                       >
                         <div className="text-start text-sm">{sessionNumber}</div>
