@@ -115,8 +115,8 @@ const Admin = () => {
     if (!startTime || !endTime) return '—';
     const [sh, sm] = startTime.split(':').map(Number);
     const [eh, em] = endTime.split(':').map(Number);
-    const diff = (eh * 60 + em) - (sh * 60 + sm);
-    if (diff <= 0) return '—';
+    let diff = (eh * 60 + em) - (sh * 60 + sm);
+    if (diff < 0) diff += 24 * 60; // переход через полночь
     return `${diff} мин`;
   };
 

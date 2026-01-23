@@ -27,6 +27,7 @@ const Index = () => {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [showValidKeysModal, setShowValidKeysModal] = useState(false);
   const [showCheckKeyModal, setShowCheckKeyModal] = useState(false);
+  const [utcNow, setUtcNow] = useState('');
 
   const loadSessions = async () => {
     try {
@@ -74,6 +75,28 @@ const Index = () => {
     loadSessions();
     // Refresh more often to react to start times approaching
     const interval = setInterval(loadSessions, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const updateUtc = () => {
+      const d = new Date();
+      setUtcNow(
+        `${d.toLocaleDateString('ru-RU', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          timeZone: 'UTC',
+        })} ${d.toLocaleTimeString('ru-RU', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          timeZone: 'UTC',
+        })} UTC`
+      );
+    };
+    updateUtc();
+    const interval = setInterval(updateUtc, 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -133,7 +156,8 @@ const Index = () => {
     const end = endTime.split(':').map(Number);
     const startMinutes = start[0] * 60 + start[1];
     const endMinutes = end[0] * 60 + end[1];
-    const diffMinutes = endMinutes - startMinutes;
+    let diffMinutes = endMinutes - startMinutes;
+    if (diffMinutes < 0) diffMinutes += 24 * 60; // учитывать переход через полночь
     return `${diffMinutes} мин`;
   };
 
@@ -194,6 +218,10 @@ const Index = () => {
               </Button>
             </div>
             
+            <div className="flex-1 flex items-center justify-end text-sm text-muted-foreground">
+              {utcNow}
+            </div>
+
             <div className="flex items-center gap-2">
               {/* Blue buttons - only for dispatcher (not admin), next to user name */}
               {isDispatcher && !isAdmin && (

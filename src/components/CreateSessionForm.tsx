@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
-import { Plus } from 'lucide-react';
+import { Plus, Loader2, CheckCircle2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface CreateSessionFormProps {
   onSuccess: () => void;
@@ -19,6 +20,8 @@ export function CreateSessionForm({ onSuccess }: CreateSessionFormProps) {
   const [endMode, setEndMode] = useState<'duration' | 'endTime'>('duration');
   const [comments, setComments] = useState('');
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState('');
   
   // Standard closing minutes - will be configured elsewhere later
   const STANDARD_CLOSING_MINUTES = 60;
@@ -35,6 +38,7 @@ export function CreateSessionForm({ onSuccess }: CreateSessionFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
 
     if (!startDateTime) {
       setError('Введите дату и время начала сессии');
@@ -76,6 +80,7 @@ export function CreateSessionForm({ onSuccess }: CreateSessionFormProps) {
     const endUtc = sessEndLocal ? toUtcParts(sessEndLocal) : null;
 
     try {
+      setSubmitting(true);
       const sessionData: any = {
         date: startUtc.date,
         registrationStartTime: startUtc.time,
@@ -98,6 +103,7 @@ export function CreateSessionForm({ onSuccess }: CreateSessionFormProps) {
       setDurationMinutes(60);
       setEndMode('duration');
       setComments('');
+      toast.success('Сессия успешно создана');
       setIsOpen(false);
       onSuccess();
     } catch (err: any) {
@@ -119,6 +125,8 @@ export function CreateSessionForm({ onSuccess }: CreateSessionFormProps) {
       }
       
       setError(errorMessage);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -148,6 +156,12 @@ export function CreateSessionForm({ onSuccess }: CreateSessionFormProps) {
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
+          {success && (
+            <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-3 py-2">
+              <CheckCircle2 className="h-4 w-4" />
+              <span>{success}</span>
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="start-datetime">Дата и время начала сессии *</Label>
             <Input
@@ -228,8 +242,15 @@ export function CreateSessionForm({ onSuccess }: CreateSessionFormProps) {
             <Button type="button" variant="outline" onClick={handleClose} className="flex-1">
               Отмена
             </Button>
-            <Button type="submit" className="flex-1">
-              Создать
+            <Button type="submit" className="flex-1" disabled={submitting}>
+              {submitting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Создаём...
+                </span>
+              ) : (
+                'Создать'
+              )}
             </Button>
           </div>
         </form>

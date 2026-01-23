@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -75,7 +75,8 @@ export function ValidKeysModal({ isOpen, onClose, sessionId }: ValidKeysModalPro
     const end = endTime.split(':').map(Number);
     const startMinutes = start[0] * 60 + start[1];
     const endMinutes = end[0] * 60 + end[1];
-    const diffMinutes = endMinutes - startMinutes;
+    let diffMinutes = endMinutes - startMinutes;
+    if (diffMinutes < 0) diffMinutes += 24 * 60; // учитывать переход через полночь
     return `${diffMinutes} мин`;
   };
 
@@ -110,10 +111,23 @@ export function ValidKeysModal({ isOpen, onClose, sessionId }: ValidKeysModalPro
 
   const matchingKeyIds = getMatchingKeys();
   const searchStatus = getSearchKeyStatus();
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  const handleSearchKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3); // Only letters, max 3
-    setSearchKey(value);
+  const handleSearchPartChange = (idx: number, val: string) => {
+    let letters = val.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3);
+    if (letters.length > 1) {
+      setSearchKey(letters.slice(0, 3));
+      const nextIdx = Math.min(letters.length, 2);
+      inputRefs.current[nextIdx]?.focus();
+      return;
+    }
+    const parts = searchKey.split('');
+    parts[idx] = letters;
+    const next = parts.join('').slice(0, 3);
+    setSearchKey(next);
+    if (letters && idx < 2) {
+      inputRefs.current[idx + 1]?.focus();
+    }
   };
 
   return (
@@ -179,29 +193,33 @@ export function ValidKeysModal({ isOpen, onClose, sessionId }: ValidKeysModalPro
 
             {/* Key Search Input */}
             <div className="space-y-2">
-              <Label htmlFor="key-search" className="text-sm font-medium">
-                Поиск ключа (введите по одной букве)
+              <Label className="text-sm font-medium">
+                Поиск ключа
               </Label>
-              <Input
-                id="key-search"
-                value={searchKey}
-                onChange={handleSearchKeyChange}
-                placeholder="Введите ключ (RSN)"
-                maxLength={3}
-                className={`font-mono text-lg font-bold text-center ${
-                  searchStatus === 'valid' 
-                    ? 'border-green-500 bg-green-50 text-green-700' 
-                    : searchStatus === 'invalid' 
-                    ? 'border-red-500 bg-red-50 text-red-700' 
-                    : ''
-                }`}
-              />
+              <div className="flex items-center justify-center gap-2">
+                {[0, 1, 2].map((i) => (
+                  <Input
+                    key={i}
+                    value={searchKey[i] || ''}
+                    onChange={(e) => handleSearchPartChange(i, e.target.value)}
+                    maxLength={1}
+                    ref={(el) => (inputRefs.current[i] = el)}
+                    className={`w-14 text-center font-mono text-lg font-bold ${
+                      searchStatus === 'valid'
+                        ? 'border-green-500 bg-green-50 text-green-700'
+                        : searchStatus === 'invalid'
+                        ? 'border-red-500 bg-red-50 text-red-700'
+                        : ''
+                    }`}
+                  />
+                ))}
+              </div>
               {searchKey && (
                 <p className="text-xs text-muted-foreground">
-                  {searchStatus === 'valid' 
-                    ? `✓ Найдено ключей: ${matchingKeyIds.size}` 
-                    : searchStatus === 'invalid' 
-                    ? '✗ Ключей с таким началом не найдено' 
+                  {searchStatus === 'valid'
+                    ? `✓ Найдено ключей: ${matchingKeyIds.size}`
+                    : searchStatus === 'invalid'
+                    ? '✗ Ключей с таким началом не найдено'
                     : ''}
                 </p>
               )}

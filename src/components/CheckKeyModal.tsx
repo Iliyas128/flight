@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,6 +20,7 @@ export function CheckKeyModal({ isOpen, onClose, sessionId }: CheckKeyModalProps
   const [checkResult, setCheckResult] = useState<'valid' | 'invalid' | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
     if (isOpen && sessionId) {
@@ -66,10 +67,24 @@ export function CheckKeyModal({ isOpen, onClose, sessionId }: CheckKeyModalProps
     setCheckResult(isValid ? 'valid' : 'invalid');
   };
 
-  const handleKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3);
-    setInputKey(value);
-    setCheckResult(null); // Reset result when input changes
+  const handleKeyPartChange = (idx: number, val: string) => {
+    let letters = val.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3);
+    if (letters.length > 1) {
+      const next = letters.slice(0, 3);
+      setInputKey(next);
+      setCheckResult(null);
+      const focusIdx = Math.min(next.length, 2);
+      inputRefs.current[focusIdx]?.focus();
+      return;
+    }
+    const parts = inputKey.split('');
+    parts[idx] = letters;
+    const next = parts.join('').slice(0, 3);
+    setInputKey(next);
+    setCheckResult(null);
+    if (letters && idx < 2) {
+      inputRefs.current[idx + 1]?.focus();
+    }
   };
 
   const formatDate = (dateStr: string) => {
@@ -95,7 +110,8 @@ export function CheckKeyModal({ isOpen, onClose, sessionId }: CheckKeyModalProps
     const end = endTime.split(':').map(Number);
     const startMinutes = start[0] * 60 + start[1];
     const endMinutes = end[0] * 60 + end[1];
-    const diffMinutes = endMinutes - startMinutes;
+    let diffMinutes = endMinutes - startMinutes;
+    if (diffMinutes < 0) diffMinutes += 24 * 60; // учитывать переход через полночь
     return `${diffMinutes} мин`;
   };
 
@@ -174,25 +190,27 @@ export function CheckKeyModal({ isOpen, onClose, sessionId }: CheckKeyModalProps
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row items-start gap-4">
                 <div className="flex-1 space-y-2">
-                  <Label htmlFor="key-input" className="text-sm font-medium">
+                  <Label className="text-sm font-medium">
                     Введите ключ для проверки
                   </Label>
                   <div className="text-xs text-muted-foreground mb-2">
                     Это окно, в котором показан проверяемый ключ. Ключ надо ввести с клавиатуры.
                   </div>
-                  <Input
-                    id="key-input"
-                    value={inputKey}
-                    onChange={handleKeyChange}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        handleCheckKey();
-                      }
-                    }}
-                    placeholder="RSN"
-                    maxLength={3}
-                    className="font-mono text-lg font-bold text-center"
-                  />
+                  <div className="flex items-center justify-center gap-2">
+                    {[0, 1, 2].map((i) => (
+                      <Input
+                        key={i}
+                        value={inputKey[i] || ''}
+                        onChange={(e) => handleKeyPartChange(i, e.target.value)}
+                        maxLength={1}
+                        ref={(el) => (inputRefs.current[i] = el)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleCheckKey();
+                        }}
+                        className="w-16 text-center font-mono text-lg font-bold"
+                      />
+                    ))}
+                  </div>
                 </div>
 
                 <div className="flex items-end">
