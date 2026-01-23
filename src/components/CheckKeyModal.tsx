@@ -87,6 +87,17 @@ export function CheckKeyModal({ isOpen, onClose, sessionId }: CheckKeyModalProps
     }
   };
 
+  const handleKeyInputKeyDown = (idx: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !inputKey[idx] && idx > 0) {
+      const parts = inputKey.split('');
+      parts[idx - 1] = '';
+      setInputKey(parts.join(''));
+      inputRefs.current[idx - 1]?.focus();
+      setCheckResult(null);
+      e.preventDefault();
+    }
+  };
+
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString('ru-RU', {
@@ -204,9 +215,10 @@ export function CheckKeyModal({ isOpen, onClose, sessionId }: CheckKeyModalProps
                         onChange={(e) => handleKeyPartChange(i, e.target.value)}
                         maxLength={1}
                         ref={(el) => (inputRefs.current[i] = el)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleCheckKey();
-                        }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleCheckKey();
+                      handleKeyInputKeyDown(i, e);
+                    }}
                         className="w-16 text-center font-mono text-lg font-bold"
                       />
                     ))}

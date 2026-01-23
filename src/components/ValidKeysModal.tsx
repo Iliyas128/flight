@@ -130,6 +130,16 @@ export function ValidKeysModal({ isOpen, onClose, sessionId }: ValidKeysModalPro
     }
   };
 
+  const handleSearchKeyDown = (idx: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !searchKey[idx] && idx > 0) {
+      const parts = searchKey.split('');
+      parts[idx - 1] = '';
+      setSearchKey(parts.join(''));
+      inputRefs.current[idx - 1]?.focus();
+      e.preventDefault();
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-y-auto">
@@ -204,6 +214,7 @@ export function ValidKeysModal({ isOpen, onClose, sessionId }: ValidKeysModalPro
                     onChange={(e) => handleSearchPartChange(i, e.target.value)}
                     maxLength={1}
                     ref={(el) => (inputRefs.current[i] = el)}
+                    onKeyDown={(e) => handleSearchKeyDown(i, e)}
                     className={`w-14 text-center font-mono text-lg font-bold ${
                       searchStatus === 'valid'
                         ? 'border-green-500 bg-green-50 text-green-700'
